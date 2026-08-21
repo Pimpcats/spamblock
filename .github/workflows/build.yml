@@ -115,6 +115,37 @@ jobs:
           (cd "$RUNNER_TEMP" && zip -qry SpamBlock.ipa Payload)
           ls -lh "$RUNNER_TEMP/SpamBlock.ipa"
 
+      - name: Verify the extension is embedded
+        run: |
+          # An .ipa that installs fine but has no extension inside blocks
+          # nothing, and says nothing about why — so assert it here rather
+          # than discovering it on a phone.
+          cd "$RUNNER_TEMP"
+          rm -rf verify && unzip -qo SpamBlock.ipa -d verify
+          app="verify/Payload/SpamBlock.app"
+
+          echo "--- bundle ---"
+          find "$app" -maxdepth 2 -mindepth 1 | sed "s|$app/||"
+
+          appex=$(find "$app/PlugIns" -maxdepth 1 -name '*.appex' 2>/dev/null | head -1)
+          if [ -z "$appex" ]; then
+            echo "::error::no .appex inside the .ipa — the app would install but never block a call"
+            exit 1
+          fi
+          echo "--- extension: $(basename "$appex") ---"
+
+          point=$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPointIdentifier' "$appex/Info.plist")
+          echo "extension point:  $point"
+          echo "principal class:  $(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPrincipalClass' "$appex/Info.plist")"
+          echo "bundle id:        $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$appex/Info.plist")"
+          echo "settings name:    $(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$appex/Info.plist")"
+
+          if [ "$point" != "com.apple.callkit.call-directory" ]; then
+            echo "::error::extension point is '$point', not a call directory"
+            exit 1
+          fi
+          echo "OK: call directory extension is embedded"
+
       - name: Upload the .ipa
         uses: actions/upload-artifact@v4
         with:
