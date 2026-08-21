@@ -1,0 +1,131 @@
+# Builds the app on a macOS runner, because Apple's toolchain only runs on macOS
+# and there isn't one to hand. Two jobs:
+#
+#   test  — compiles everything and runs the unit tests in the Simulator, which
+#           needs no signing and no Apple account at all.
+#   ipa   — produces an unsigned SpamBlock.ipa for sideloading with AltStore or
+#           SideStore, which re-sign it with your own free Apple ID.
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain versions
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          # Runner images change their simulator line-up, so resolve a real one
+          # rather than hard-coding a device name that may not exist.
+          udid=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json, sys
+          devices = json.load(sys.stdin)['devices']
+          best = None
+          for runtime, entries in devices.items():
+              if 'iOS' not in runtime:
+                  continue
+              for d in entries:
+                  if d.get('isAvailable') and 'iPhone' in d['name']:
+                      key = tuple(int(n) for n in runtime.split('iOS-')[-1].split('-'))
+                      if best is None or key > best[0]:
+                          best = (key, d['udid'], d['name'], runtime)
+          if best is None:
+              sys.exit('no available iPhone simulator')
+          print(best[1])
+          sys.stderr.write(f'using {best[2]} on {best[3]}\n')
+          ")
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project SpamBlock.xcodeproj \
+            -scheme SpamBlock \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tee xcodebuild.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
+          if-no-files-found: ignore
+
+  ipa:
+    runs-on: macos-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Archive without signing
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project SpamBlock.xcodeproj \
+            -scheme SpamBlock \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/SpamBlock.xcarchive" \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            | tee archive.log
+
+      - name: Wrap as an unsigned .ipa
+        run: |
+          # An .ipa is just a zip with the .app inside a Payload directory.
+          # AltStore/SideStore apply your own signature when they install it.
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$RUNNER_TEMP/SpamBlock.xcarchive/Products/Applications/SpamBlock.app" \
+                "$RUNNER_TEMP/Payload/"
+          (cd "$RUNNER_TEMP" && zip -qry SpamBlock.ipa Payload)
+          ls -lh "$RUNNER_TEMP/SpamBlock.ipa"
+
+      - name: Upload the .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpamBlock-unsigned-ipa
+          path: ${{ runner.temp }}/SpamBlock.ipa
+          if-no-files-found: error
+
+      - name: Upload archive log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-log
+          path: archive.log
+          if-no-files-found: ignore
