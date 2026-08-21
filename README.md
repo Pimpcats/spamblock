@@ -103,7 +103,7 @@ In order, because each step depends on the one before:
   switched.
 - **The app lists your area codes** with a total underneath. Empty means
   `Shared/BlockedAreaCodes.swift` is still empty.
-- **Tap "Reload block list"** and wait. Millions of entries take a while. An
+- **Tap "Update block list"** and wait. Millions of entries take a while. An
   error here is explained in plain language rather than as a CallKit code.
 
 Free Apple IDs get 10 App IDs per 7 days; this app uses two, itself and the
@@ -143,16 +143,18 @@ both targets — the app then edits rules directly, no rebuilds.
 ## How it works
 
 ```
-SpamBlock (app)                    CallDirectoryExtension
-  edit rules                         iOS runs this on its own schedule
-       │                                        │
-       ├──── writes block-rules.json ───────────┤
-       │      (App Group container)             │
-       │                                   NumberPlan
-       │                                  expands prefixes
-       └──── reloadExtension() ──────►    into 7.9M sorted Int64s
-                                                │
-                                   addBlockingEntry(withNextSequentialPhoneNumber:)
+  BlockedAreaCodes.swift ─── compiled into both targets ───┐
+                                                           │
+SpamBlock (app)                       CallDirectoryExtension
+  shows the list                        iOS runs this on its own schedule
+       │                                           │
+       ├── block-rules.json ──────────────────────┤   paid account only:
+       │   (App Group container)                   │   editable in the app
+       │                                      NumberPlan
+       │                                     expands prefixes
+       └── reloadExtension() ────────────►   into 7.9M sorted Int64s
+                                                   │
+                                      addBlockingEntry(withNextSequentialPhoneNumber:)
 ```
 
 | Path | What it does |
@@ -176,19 +178,27 @@ over random rule sets and over a full area code.
 ## Troubleshooting
 
 **Calls still come through.** Check the toggle in Settings, then tap **Update
-block list** and wait for it to finish. A rule that's saved but not loaded does
-nothing.
+block list** in the app and wait for it to finish. A list that's installed but
+never loaded blocks nothing.
 
-**"iOS can't find the call blocking extension."** The extension's bundle
-identifier doesn't match `AppConfiguration.callDirectoryExtensionIdentifier`.
-Re-run `scripts/configure.sh`.
+**SpamBlock isn't in the Call Blocking & Identification list at all.** The
+extension was stripped during sideloading. Turn off "Remove app extensions" in
+your sideloading tool and install again.
+
+**"iOS can't find the call blocking extension."** The app looks for the
+extension inside its own bundle, so this means the `.appex` is missing —
+same cause and same fix as above.
 
 **"The block list is too large."** iOS refused it. Remove an area code, or
 narrow one — six digits instead of three drops it from 7.9 million numbers to
 10,000.
 
-**The app says the App Group isn't available.** Either the capability is
-missing from one of the two targets, or you're on a free account — see above.
+**The app says the list is built in and can't be edited.** Expected on a free
+Apple ID. Edit `Shared/BlockedAreaCodes.swift` and rebuild — see
+[Changing the list](#changing-the-list).
+
+**The app stopped opening after about a week.** The free signing certificate
+expired. Sideload it again.
 
 **Nothing at all seems to happen.** Look for the extension's log line in
 Console.app with your iPhone connected; it reports how many entries it loaded
