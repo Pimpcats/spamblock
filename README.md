@@ -2,9 +2,9 @@
 
 An iPhone app that blocks incoming calls by area code.
 
-Add `415` and every call from area code 415 is rejected before your phone rings.
-Add `415555` instead and only the `(415) 555-xxxx` exchange is blocked. You pick
-how wide to cast the net, per rule.
+Put `415` on the list and every call from area code 415 is rejected before your
+phone rings. Put `415555` on it instead and only the `(415) 555-xxxx` exchange
+is blocked. You pick how wide to cast the net, per entry.
 
 ## The thing to know first
 
@@ -16,7 +16,7 @@ iOS a static, sorted list of individual phone numbers ahead of time.
 There are no wildcards in that list. So "block area code 415" has to become
 every number in area code 415, enumerated one at a time:
 
-| You type | It means | Numbers handed to iOS |
+| List entry | It means | Numbers handed to iOS |
 | --- | --- | --- |
 | `415` | the whole area code | 7,920,000 |
 | `4155` | exchanges 500–599 | 990,000 |
