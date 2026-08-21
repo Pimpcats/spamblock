@@ -18,8 +18,9 @@ enum AppConfiguration {
     /// would leave a hard-coded constant pointing at nothing.
     ///
     /// Only meaningful in the app; inside the extension there are no plug-ins to
-    /// enumerate and the fallback is returned.
-    static var callDirectoryExtensionIdentifier: String {
+    /// enumerate and the fallback is returned. Resolved once — it reads the
+    /// filesystem, and the answer can't change while the app is running.
+    static let callDirectoryExtensionIdentifier: String = {
         if let plugIns = Bundle.main.builtInPlugInsURL,
            let contents = try? FileManager.default.contentsOfDirectory(
                at: plugIns,
@@ -30,7 +31,7 @@ enum AppConfiguration {
             return identifier
         }
         return (Bundle.main.bundleIdentifier ?? "com.example.spamblock") + ".CallDirectory"
-    }
+    }()
 
     /// App Group container both targets read and write the rule list through.
     static let appGroupIdentifier = "group.com.example.spamblock"
