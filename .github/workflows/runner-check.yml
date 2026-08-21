@@ -1,0 +1,18 @@
+# Diagnostic: are runners being allocated at all, and is the problem specific
+# to macOS? Ubuntu bills at 1x, macOS at 10x against the same monthly pool, so
+# macOS is what an exhausted allowance takes out first.
+name: Runner check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ubuntu runner allocated ok"
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - run: echo "macos runner allocated ok"
