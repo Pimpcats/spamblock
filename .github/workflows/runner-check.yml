@@ -5,6 +5,11 @@ name: Runner check
 
 on:
   workflow_dispatch:
+  # Self-triggering, so the diagnostic doesn't depend on the dispatch API
+  # registering a brand-new workflow file. Scoped so it stays out of the way.
+  push:
+    paths:
+      - '.github/workflows/runner-check.yml'
 
 jobs:
   ubuntu:
