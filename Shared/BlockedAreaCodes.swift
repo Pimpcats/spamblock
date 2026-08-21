@@ -22,7 +22,6 @@ import Foundation
 
 enum BlockedAreaCodes {
     static let prefixes: [String] = [
-        // "415",
-        // "628",
+        "909",  // San Bernardino / Inland Empire, CA — 7,920,000 numbers
     ]
 }
