@@ -51,13 +51,12 @@ on macOS. There is no cloud service, Linux workaround, or exception. What you
 *can* do without owning one is borrow somebody else's: this repo builds itself
 on a GitHub macOS runner, which is what the rest of this section is about.
 
-Worth weighing first, though, because the free-account route below has real
-friction: **Settings › Apps › Phone › Silence Unknown Callers** silences anyone
-not in your contacts or recent outgoing calls. It's built in, free, and takes
-ten seconds. It's blunter than blocking by area code — it also silences your
-pharmacy — but if it solves your problem, it solves it today. Your carrier's
-spam filter (AT&T ActiveArmor, Verizon Call Filter, T-Mobile Scam Shield) is
-free too. Come back here if neither is enough.
+Worth knowing the free alternatives exist before you invest in this one:
+**Settings › Apps › Phone › Silence Unknown Callers** silences anyone not in
+your contacts or recent outgoing calls, and your carrier's spam filter (AT&T
+ActiveArmor, Verizon Call Filter, T-Mobile Scam Shield) costs nothing either.
+Both are blunter than blocking by area code — Silence Unknown Callers also
+silences your pharmacy — which is the whole reason this exists.
 
 ## Building it without a Mac
 
@@ -73,37 +72,47 @@ and signing it is what the next step does.
 
 ## Getting it onto the phone
 
-Sideloading applies *your* Apple ID's signature to the app. The usual tool is
-**AltStore**, and it needs a computer on the same Wi-Fi as the phone — a
-**Windows PC works**, it doesn't have to be a Mac:
+Sideloading applies *your* Apple ID's signature to the app, which is what makes
+iOS willing to run it. **Sideloadly** and **AltStore** both do this from a
+Windows PC or a Mac.
 
-1. Install **AltServer** on the PC from [altstore.io](https://altstore.io).
-2. Plug in the iPhone, use AltServer to install **AltStore** onto it, and sign
-   in with your Apple ID when asked.
-3. In AltStore on the phone, tap **+** and pick the `SpamBlock.ipa` you
-   downloaded.
-4. On the phone: **Settings › General › VPN & Device Management** → trust your
+**One setting matters more than all the others.** Sideloadly's options include
+**Remove app extensions** (AltStore and similar tools have an equivalent).
+Leave it **off**. This app is almost entirely its extension — stripping it
+leaves an app that installs cleanly, opens fine, shows your list, and blocks
+absolutely nothing, with no error anywhere to explain why. It's the one
+misconfiguration that looks like success.
+
+The steps:
+
+1. Download `SpamBlock.ipa` from the Actions tab (above).
+2. Sideload it with your Apple ID. Keep app extensions.
+3. On the phone: **Settings › General › VPN & Device Management** → trust your
    developer certificate.
-5. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
+4. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
    **SpamBlock**.
 
-**SideStore** is a fork that refreshes on-device afterwards, but its initial
-pairing still needs a computer once.
+### Check it actually worked
 
-Two things about free Apple IDs, both unavoidable:
+In order, because each step depends on the one before:
 
-- **The app stops working after 7 days.** Free certificates expire. AltServer
-  re-signs it automatically while the phone and PC are on the same Wi-Fi;
-  otherwise you reinstall it by hand each week. A paid membership ($99/yr)
-  extends this to a year.
-- **You get 10 App IDs per 7 days.** This app uses two, itself and the
-  extension.
+- **SpamBlock appears** in the Call Blocking & Identification list. If it
+  doesn't, the extension isn't in the build you installed — see the setting
+  above.
+- **The app says "Blocking is on."** If it says off, the toggle in step 4 isn't
+  switched.
+- **The app lists your area codes** with a total underneath. Empty means
+  `Shared/BlockedAreaCodes.swift` is still empty.
+- **Tap "Reload block list"** and wait. Millions of entries take a while. An
+  error here is explained in plain language rather than as a CallKit code.
 
-I have not been able to verify the last step of this end to end — no iPhone
-here. The app and extension compile and their tests pass on a real Xcode
-toolchain (see the Actions tab), and a Call Directory extension needs no
-special entitlement, so it should work; but if it doesn't, that's where the
-uncertainty is.
+Free Apple IDs get 10 App IDs per 7 days; this app uses two, itself and the
+extension. Signing lasts 7 days, so it needs re-sideloading weekly.
+
+I have not been able to verify the last step end to end — no iPhone here. The
+app and extension compile and their tests pass on a real Xcode toolchain, and
+CI checks that the extension is present and correctly formed inside every
+`.ipa`, so what's left untested is the device itself.
 
 ## Changing the list
 
@@ -112,7 +121,7 @@ Because your rules are compiled in, changing them means a rebuild:
 1. Edit `Shared/BlockedAreaCodes.swift` — on github.com the pencil icon is
    enough, no computer needed.
 2. Commit. The build starts on its own.
-3. Download the new `.ipa` and install it over the old one through AltStore.
+3. Download the new `.ipa` and sideload it over the old one.
 
 The app itself shows you what's currently blocked and the entry count, but its
 editing controls are hidden when the list is compiled in, because nothing typed
