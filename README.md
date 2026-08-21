@@ -44,6 +44,23 @@ If that ceiling is a problem, the honest answer is that an iPhone can't do
 better; Android's `CallScreeningService` can block an area code with a
 three-digit prefix check and no list at all.
 
+## Contacts still ring
+
+Blocking a whole area code would otherwise catch people you know in it. CallKit
+never asks the app about a specific incoming call — it takes a fixed list ahead
+of time — so "unless I know them" can't be decided when the phone rings. It is
+decided when the list is built: the extension reads your address book and
+leaves those numbers out of the range it blocks.
+
+Two consequences worth knowing:
+
+- **The app has to ask for Contacts permission**, because the extension can't.
+  iOS launches it in the background where no prompt can be answered. Until you
+  grant it, the area code is blocked outright — contacts included — and the app
+  says so on its main screen rather than letting you find out.
+- **New contacts aren't spared until the list reloads.** Add someone in a
+  blocked area code, then tap **Update block list**.
+
 ## Before you build anything
 
 Building this needs a Mac, because Apple's compiler and signing tools only run
@@ -103,6 +120,9 @@ In order, because each step depends on the one before:
   switched.
 - **The app lists your area codes** with a total underneath. Empty means
   `Shared/BlockedAreaCodes.swift` is still empty.
+- **The Contacts row says how many of your contacts will still ring.** If it
+  asks for permission, grant it — otherwise contacts in a blocked area code get
+  rejected along with everyone else.
 - **Tap "Update block list"** and wait. Millions of entries take a while. An
   error here is explained in plain language rather than as a CallKit code.
 
@@ -163,6 +183,7 @@ SpamBlock (app)                       CallDirectoryExtension
 | `Shared/NANP.swift` | Which area codes and exchanges can exist, and the `Int64` encoding CallKit uses. |
 | `Shared/PrefixValidator.swift` | Normalises typed input, rejects prefixes no real number can match. |
 | `Shared/BlockedAreaCodes.swift` | The compiled-in list. What you edit on a free Apple ID. |
+| `Shared/ContactExemptions.swift` | Reads the address book so known callers aren't blocked. |
 | `Shared/RuleStore.swift` | The rule list in the App Group container, on a paid account. |
 | `CallDirectoryExtension/` | The extension iOS actually calls. Deliberately minimal. |
 | `SpamBlock/` | SwiftUI app: edit rules, watch the entry count, trigger reloads. |
@@ -180,6 +201,10 @@ over random rule sets and over a full area code.
 **Calls still come through.** Check the toggle in Settings, then tap **Update
 block list** in the app and wait for it to finish. A list that's installed but
 never loaded blocks nothing.
+
+**Someone I know in the blocked area code got rejected.** Either Contacts
+permission is off, or they were added after the list was last built. Check the
+Contacts row in the app, then tap **Update block list**.
 
 **SpamBlock isn't in the Call Blocking & Identification list at all.** The
 extension was stripped during sideloading. Turn off "Remove app extensions" in

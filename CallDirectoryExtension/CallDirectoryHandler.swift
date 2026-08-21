@@ -28,8 +28,18 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
             ? NumberPlan(rules: store.load())
             : NumberPlan(prefixes: BlockedAreaCodes.prefixes)
 
+        // Read here rather than being handed the numbers by the app: that would
+        // need an App Group, which a free Apple ID can't provision. Empty when
+        // permission was never granted, which blocks the area code outright —
+        // the app says so plainly rather than leaving it to be discovered.
+        let exempt = ContactExemptions.sortedNumbers()
+
         let source = store.isAvailable ? "app group" : "built-in list"
-        logger.log("Loading \(plan.prefixes.count) prefixes, \(plan.entryCount) entries from \(source, privacy: .public)")
+        logger.log("""
+            Loading \(plan.prefixes.count) prefixes, \(plan.entryCount) entries \
+            from \(source, privacy: .public), \
+            exempting \(plan.exemptedCount(from: exempt)) of \(exempt.count) contacts
+            """)
 
         // On an incremental request iOS keeps what was supplied last time, so
         // the previous entries have to be cleared before the current list is
@@ -39,7 +49,7 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
             context.removeAllBlockingEntries()
         }
 
-        plan.forEachNumber { number in
+        plan.forEachNumber(exempt: exempt) { number in
             context.addBlockingEntry(withNextSequentialPhoneNumber: number)
         }
 

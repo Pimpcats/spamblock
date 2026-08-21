@@ -45,6 +45,7 @@ targets:
       - target: CallDirectoryExtension
         embed: true
       - sdk: CallKit.framework
+      - sdk: Contacts.framework
 
   CallDirectoryExtension:
     type: app-extension
@@ -59,6 +60,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: CallDirectoryExtension/CallDirectoryExtension.entitlements
     dependencies:
       - sdk: CallKit.framework
+      - sdk: Contacts.framework
 
   SpamBlockTests:
     type: bundle.unit-test
@@ -70,6 +72,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.tests
         GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - sdk: Contacts.framework
 
 schemes:
   SpamBlock:

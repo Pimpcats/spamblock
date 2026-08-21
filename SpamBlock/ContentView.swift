@@ -5,6 +5,7 @@ struct ContentView: View {
 
     @StateObject private var list = BlockListViewModel()
     @StateObject private var directory = CallDirectoryController()
+    @StateObject private var contacts = ContactAccessController()
     @State private var isAddingRule = false
 
     var body: some View {
@@ -12,6 +13,7 @@ struct ContentView: View {
             List {
                 if !list.isEditable { compiledInListSection }
                 statusSection
+                contactsSection
                 blockListSection
                 if let saveError = list.saveError {
                     Section {
@@ -37,11 +39,15 @@ struct ContentView: View {
                     list.add(prefix: prefix, note: note)
                 }
             }
-            .onAppear { directory.refreshStatus() }
+            .onAppear {
+                directory.refreshStatus()
+                contacts.refresh(against: list.plan)
+            }
             // Turning the extension on happens in Settings, outside the app, so
             // the switch is re-read every time the app comes back to the front.
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 directory.refreshStatus()
+                contacts.refresh(against: list.plan)
             }
         }
     }
@@ -117,6 +123,53 @@ struct ContentView: View {
         case .enabled: return "iOS is using your block list."
         case .disabled: return "Switch SpamBlock on in Settings to start blocking."
         case .unknown: return "iOS hasn’t reported whether SpamBlock is switched on."
+        }
+    }
+
+    // MARK: - Contacts
+
+    /// Contacts permission is load-bearing, not a nicety: without it the
+    /// extension has nothing to exempt and the area code is blocked outright,
+    /// including people you know. That has to be visible.
+    private var contactsExemptSummary: String {
+        switch contacts.exemptedCount {
+        case 0: return "No one in your contacts is in a blocked area code."
+        case 1: return "1 contact in a blocked area code will still ring."
+        default: return "\(contacts.exemptedCount) contacts in a blocked area code will still ring."
+        }
+    }
+
+    private var contactsSection: some View {
+        Section {
+            switch contacts.status {
+            case .granted:
+                Label {
+                    Text(contactsExemptSummary)
+                } icon: {
+                    Image(systemName: "person.crop.circle.badge.checkmark")
+                        .foregroundStyle(.green)
+                }
+            case .notDetermined:
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Right now every number in a blocked area code is rejected, including people in your contacts.")
+                        .font(.callout)
+                    Button("Allow contacts access") {
+                        contacts.requestAccess(against: list.plan)
+                    }
+                }
+            case .denied:
+                Label {
+                    Text("Contacts access is off, so everyone in a blocked area code is rejected — contacts included. Turn it on in Settings › SpamBlock › Contacts.")
+                        .font(.callout)
+                } icon: {
+                    Image(systemName: "person.crop.circle.badge.exclamationmark")
+                        .foregroundStyle(.orange)
+                }
+            }
+        } header: {
+            Text("Contacts")
+        } footer: {
+            Text("Changes to your contacts reach the block list the next time it loads, not immediately. Tap Update block list after adding someone in a blocked area code.")
         }
     }
 

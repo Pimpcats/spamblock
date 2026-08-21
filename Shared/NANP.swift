@@ -15,6 +15,10 @@ enum NANP {
 
     static let countryCode: Int64 = 1
 
+    /// Digits after the country code: 3 for the area code, 3 for the exchange,
+    /// 4 for the line number.
+    static let nationalDigits = 10
+
     /// N11 codes — 211, 311, … 911 — are reserved service codes. They are never
     /// assigned as an area code or as a central office code, so skipping them
     /// removes 80,000 numbers per area code that can never ring.

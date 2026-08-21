@@ -97,22 +97,58 @@ struct NumberPlan {
         prefixes.reduce(0) { $0 + NumberPlan.entryCount(for: $1) }
     }
 
-    /// Calls `body` once per blocked number, in strictly ascending order.
+    /// Calls `body` once per blocked number, in strictly ascending order,
+    /// leaving out anything in `exempt`.
     ///
     /// Nothing is accumulated: for a whole area code this yields 7.9 million
     /// numbers, and materialising them as an array would cost ~63 MB and get the
     /// extension killed.
-    func forEachNumber(_ body: (Int64) -> Void) {
+    ///
+    /// - Parameter exempt: numbers to leave unblocked — in practice the address
+    ///   book, so blocking an area code doesn't take known callers with it.
+    ///   **Must be sorted ascending.** Both sequences ascend, so one forward
+    ///   index through `exempt` is enough; no per-number lookup, no hashing of
+    ///   eight million values.
+    func forEachNumber(exempt: [Int64] = [], _ body: (Int64) -> Void) {
+        var exemptIndex = 0
+
         for prefix in prefixes {
             guard let npa = Int(prefix.prefix(3)) else { continue }
             let lines = NumberPlan.lineRange(for: prefix)
             for nxx in NumberPlan.candidateExchanges(for: prefix) {
                 let base = NANP.phoneNumber(npa: npa, nxx: nxx, line: 0)
                 for line in lines {
-                    body(base + Int64(line))
+                    let number = base + Int64(line)
+                    while exemptIndex < exempt.count && exempt[exemptIndex] < number {
+                        exemptIndex += 1
+                    }
+                    if exemptIndex < exempt.count && exempt[exemptIndex] == number {
+                        continue
+                    }
+                    body(number)
                 }
             }
         }
+    }
+
+    /// Whether this plan would block `number` were it not exempt.
+    ///
+    /// Used to report how many contacts an area code would have caught, so the
+    /// exemption is visible rather than something to take on trust.
+    func covers(_ number: Int64) -> Bool {
+        let digits = String(number)
+        guard digits.count == NANP.nationalDigits + 1, digits.hasPrefix("1") else { return false }
+        let national = String(digits.dropFirst())
+
+        guard let nxx = Int(national.dropFirst(3).prefix(3)), NANP.isAssignableExchange(nxx) else {
+            return false
+        }
+        return prefixes.contains { national.hasPrefix($0) }
+    }
+
+    /// How many of `exempt` this plan would otherwise have blocked.
+    func exemptedCount(from exempt: [Int64]) -> Int {
+        exempt.reduce(0) { $0 + (covers($1) ? 1 : 0) }
     }
 }
 

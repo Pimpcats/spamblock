@@ -132,6 +132,107 @@ final class NumberPlanTests: XCTestCase {
         XCTAssertEqual(previous, 14_159_999_999) // +1 (415) 999-9999
     }
 
+    // MARK: - Contact exemptions
+
+    private func numbers(_ prefixes: [String], exempt: [Int64] = []) -> [Int64] {
+        var out: [Int64] = []
+        NumberPlan(prefixes: prefixes).forEachNumber(exempt: exempt) { out.append($0) }
+        return out
+    }
+
+    func testExemptNumbersAreOmitted() {
+        let all = numbers(["909555"])
+        let victim = all[4_242]
+        let kept = numbers(["909555"], exempt: [victim])
+
+        XCTAssertEqual(kept.count, all.count - 1)
+        XCTAssertFalse(kept.contains(victim))
+        XCTAssertTrue(zip(kept, kept.dropFirst()).allSatisfy { $0 < $1 })
+    }
+
+    /// The forward index through `exempt` is the part most likely to be wrong
+    /// at the edges, so the edges get their own cases.
+    func testExemptionsAtTheBoundaries() {
+        let all = numbers(["909555"])
+        let first = all.first!
+        let last = all.last!
+
+        XCTAssertEqual(numbers(["909555"], exempt: [first]).first, first + 1)
+        XCTAssertEqual(numbers(["909555"], exempt: [last]).last, last - 1)
+        XCTAssertEqual(numbers(["909555"], exempt: [first, last]).count, all.count - 2)
+        XCTAssertEqual(numbers(["909555"], exempt: all), [])
+    }
+
+    func testExemptionsOutsideThePlanChangeNothing() {
+        let all = numbers(["909555"])
+        XCTAssertEqual(numbers(["909555"], exempt: [10_000_000_000]).count, all.count)
+        XCTAssertEqual(numbers(["909555"], exempt: [19_999_999_999]).count, all.count)
+        XCTAssertEqual(numbers(["909555"], exempt: [10_000_000_000, 19_999_999_999]).count, all.count)
+    }
+
+    func testDuplicateExemptionsCountOnce() {
+        let all = numbers(["909555"])
+        let victim = all[7]
+        XCTAssertEqual(numbers(["909555"], exempt: [victim, victim]).count, all.count - 1)
+    }
+
+    func testCoversOnlyWhatWouldBeBlocked() {
+        let plan = NumberPlan(prefixes: ["909"])
+        XCTAssertTrue(plan.covers(NANP.phoneNumber(npa: 909, nxx: 555, line: 134)))
+        XCTAssertFalse(plan.covers(NANP.phoneNumber(npa: 213, nxx: 555, line: 134)))
+        // An N11 exchange is never emitted, so it is never "covered" either.
+        XCTAssertFalse(plan.covers(14_154_110_000))
+    }
+
+    func testExemptedCountIgnoresContactsElsewhere() {
+        let plan = NumberPlan(prefixes: ["909"])
+        let contacts = [
+            NANP.phoneNumber(npa: 213, nxx: 555, line: 9999),
+            NANP.phoneNumber(npa: 909, nxx: 555, line: 100),
+            NANP.phoneNumber(npa: 909, nxx: 720, line: 4242),
+        ].sorted()
+        XCTAssertEqual(plan.exemptedCount(from: contacts), 2)
+    }
+
+    /// The case that matters: a whole area code with a few contacts spared.
+    func testWholeAreaCodeMinusContacts() {
+        let contacts = [
+            NANP.phoneNumber(npa: 213, nxx: 555, line: 9999),
+            NANP.phoneNumber(npa: 909, nxx: 555, line: 100),
+            NANP.phoneNumber(npa: 909, nxx: 720, line: 4242),
+        ].sorted()
+
+        var count = 0
+        var previous: Int64 = 0
+        var ascending = true
+        NumberPlan(prefixes: ["909"]).forEachNumber(exempt: contacts) { number in
+            if number <= previous { ascending = false }
+            if contacts.contains(number) { ascending = false }  // must never be emitted
+            previous = number
+            count += 1
+        }
+
+        XCTAssertTrue(ascending)
+        XCTAssertEqual(count, 7_920_000 - 2)
+    }
+
+    // MARK: - Parsing contact numbers
+
+    func testContactNumbersParseFromTypedFormats() {
+        let expected = NANP.phoneNumber(npa: 909, nxx: 555, line: 134)
+        for text in ["(909) 555-0134", "909-555-0134", "+1 909 555 0134", "1 (909) 555.0134", "9095550134"] {
+            XCTAssertEqual(ContactExemptions.phoneNumber(from: text), expected, "failed on \(text)")
+        }
+    }
+
+    func testContactNumbersRejectNonNANP() {
+        XCTAssertNil(ContactExemptions.phoneNumber(from: "611"))              // short code
+        XCTAssertNil(ContactExemptions.phoneNumber(from: "+44 20 7946 0958")) // not +1
+        XCTAssertNil(ContactExemptions.phoneNumber(from: ""))
+        XCTAssertNil(ContactExemptions.phoneNumber(from: "909-555-013"))      // too short
+        XCTAssertNil(ContactExemptions.phoneNumber(from: "909-411-0134"))     // N11 exchange
+    }
+
     // MARK: - Input handling
 
     func testNormalisationStripsFormattingAndCountryCode() {
