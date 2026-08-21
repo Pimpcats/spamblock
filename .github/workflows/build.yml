@@ -81,6 +81,8 @@ jobs:
   ipa:
     runs-on: macos-latest
     needs: test
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -152,6 +154,32 @@ jobs:
           name: SpamBlock-unsigned-ipa
           path: ${{ runner.temp }}/SpamBlock.ipa
           if-no-files-found: error
+
+      # Actions artifacts live on blob storage behind a login, which makes them
+      # awkward to fetch from a phone or a script. A single-commit branch keeps
+      # the newest .ipa at a stable URL on github.com instead.
+      - name: Publish the .ipa to the builds branch
+        run: |
+          cd "$RUNNER_TEMP"
+          rm -rf publish && mkdir publish && cd publish
+          git init -q
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          cp "$RUNNER_TEMP/SpamBlock.ipa" .
+          cat > README.md <<EOF
+          Build output. Do not edit or open pull requests against this branch —
+          every build replaces it wholesale.
+
+          SpamBlock.ipa was built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}.
+          It is unsigned; sideload it with Sideloadly or AltStore, and leave
+          "Remove app extensions" switched off.
+          EOF
+          git add -A
+          git commit -qm "SpamBlock.ipa from ${GITHUB_SHA}"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" \
+            HEAD:refs/heads/builds
+          echo "published to the builds branch"
 
       - name: Upload archive log
         if: always()
