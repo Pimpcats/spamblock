@@ -30,9 +30,20 @@ final class ContactAccessController: ObservableObject {
             status = .granted
         }
 
-        exemptedCount = status == .granted
-            ? plan.exemptedCount(from: ContactExemptions.sortedNumbers())
-            : 0
+        guard status == .granted else {
+            exemptedCount = 0
+            return
+        }
+
+        // Walking the address book is not instant on a large one, and this runs
+        // every time the app comes to the front, so it stays off the main
+        // thread. Only the count comes back.
+        Task {
+            let numbers = await Task.detached(priority: .utility) {
+                ContactExemptions.sortedNumbers()
+            }.value
+            self.exemptedCount = plan.exemptedCount(from: numbers)
+        }
     }
 
     /// Takes the plan by value: granting permission doesn't change which
