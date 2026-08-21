@@ -12,7 +12,12 @@ final class BlockListViewModel: ObservableObject {
     private static let appliedSignatureKey = "lastAppliedPlanSignature"
 
     init() {
-        rules = store.load()
+        // With no App Group there is nowhere to write rules that the extension
+        // could read, so the compiled-in list is shown instead — the same list
+        // the extension is using, just not editable from here.
+        rules = store.isAvailable
+            ? store.load()
+            : BlockedAreaCodes.prefixes.map { BlockRule(prefix: $0) }
         lastAppliedSignature = UserDefaults.standard.string(forKey: Self.appliedSignatureKey)
     }
 
@@ -22,7 +27,10 @@ final class BlockListViewModel: ObservableObject {
     var existingPrefixes: Set<String> { Set(rules.map(\.prefix)) }
 
     /// Whether rules edited here can reach the extension at all.
-    var isSharedStorageAvailable: Bool { store.isAvailable }
+    ///
+    /// `false` on a free Apple ID: the list is compiled into the app, so it can
+    /// be shown but not changed.
+    var isEditable: Bool { store.isAvailable }
 
     /// Whether the saved rules differ from what iOS is actually enforcing.
     ///

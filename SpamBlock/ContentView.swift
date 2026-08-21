@@ -10,14 +10,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
-                if !list.isSharedStorageAvailable {
-                    Section {
-                        messageRow(
-                            text: "The shared App Group isn’t available, so rules added here can’t reach the call blocking extension. App Groups need a paid Apple Developer membership — on a free account, list your area codes in AppConfiguration.builtInPrefixes and rebuild instead.",
-                            kind: .failure
-                        )
-                    }
-                }
+                if !list.isEditable { compiledInListSection }
                 statusSection
                 blockListSection
                 if let saveError = list.saveError {
@@ -29,11 +22,13 @@ struct ContentView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("SpamBlock")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        isAddingRule = true
-                    } label: {
-                        Label("Add area code", systemImage: "plus")
+                if list.isEditable {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            isAddingRule = true
+                        } label: {
+                            Label("Add area code", systemImage: "plus")
+                        }
                     }
                 }
             }
@@ -130,13 +125,19 @@ struct ContentView: View {
     private var blockListSection: some View {
         Section {
             if list.rules.isEmpty {
-                Text("No area codes yet. Tap + to add one.")
+                Text(list.isEditable
+                     ? "No area codes yet. Tap + to add one."
+                     : "No area codes yet. Add them to Shared/BlockedAreaCodes.swift.")
                     .foregroundStyle(.secondary)
-            } else {
+            } else if list.isEditable {
                 ForEach(list.rules) { rule in
                     ruleRow(rule)
                 }
                 .onDelete { list.delete(at: $0) }
+            } else {
+                ForEach(list.rules) { rule in
+                    ruleDetail(rule)
+                }
             }
         } header: {
             Text("Blocked")
@@ -152,20 +153,36 @@ struct ContentView: View {
             get: { rule.isEnabled },
             set: { list.setEnabled($0, for: rule) }
         )) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(PrefixValidator.formatted(rule.prefix))
-                    .font(.body.monospacedDigit())
-                Text(PrefixValidator.scopeDescription(rule.prefix))
+            ruleDetail(rule)
+        }
+    }
+
+    private func ruleDetail(_ rule: BlockRule) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(PrefixValidator.formatted(rule.prefix))
+                .font(.body.monospacedDigit())
+            Text(PrefixValidator.scopeDescription(rule.prefix))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !rule.note.isEmpty {
+                Text(rule.note)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if !rule.note.isEmpty {
-                    Text(rule.note)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text("\(NumberPlan.entryCount(for: rule.prefix).formatted()) numbers")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+            }
+            Text("\(NumberPlan.entryCount(for: rule.prefix).formatted()) numbers")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    /// Shown instead of the editing affordances when the list is compiled in.
+    private var compiledInListSection: some View {
+        Section {
+            Label {
+                Text("This list is built into the app. Editing it here isn’t possible on a free Apple ID — change Shared/BlockedAreaCodes.swift, push, and reinstall the new build.")
+                    .font(.callout)
+            } icon: {
+                Image(systemName: "lock.fill").foregroundStyle(.secondary)
             }
         }
     }

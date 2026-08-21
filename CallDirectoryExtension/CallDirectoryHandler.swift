@@ -13,7 +13,7 @@ import os
 final class CallDirectoryHandler: CXCallDirectoryProvider {
 
     private let logger = Logger(
-        subsystem: AppConfiguration.callDirectoryExtensionIdentifier,
+        subsystem: Bundle.main.bundleIdentifier ?? "SpamBlock",
         category: "CallDirectory"
     )
 
@@ -21,12 +21,12 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
         context.delegate = self
 
         // Without a provisioned App Group there is no shared container to read,
-        // so the compile-time list is the only thing available. See
-        // AppConfiguration.builtInPrefixes.
+        // so the compiled-in list is the only thing available. That is the
+        // normal path on a free Apple ID — see Shared/BlockedAreaCodes.swift.
         let store = RuleStore.shared
         let plan = store.isAvailable
             ? NumberPlan(rules: store.load())
-            : NumberPlan(prefixes: AppConfiguration.builtInPrefixes)
+            : NumberPlan(prefixes: BlockedAreaCodes.prefixes)
 
         let source = store.isAvailable ? "app group" : "built-in list"
         logger.log("Loading \(plan.prefixes.count) prefixes, \(plan.entryCount) entries from \(source, privacy: .public)")

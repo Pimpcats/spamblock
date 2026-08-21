@@ -9,28 +9,29 @@ import Foundation
 /// nothing).
 enum AppConfiguration {
 
-    /// Bundle identifier of the Call Directory app extension target.
+    /// Bundle identifier of the Call Directory app extension.
     ///
-    /// `CXCallDirectoryManager` addresses the extension by this string. If it
-    /// does not match the extension's actual bundle identifier, every call
-    /// returns `noExtensionFound`.
-    static let callDirectoryExtensionIdentifier = "com.example.spamblock.CallDirectory"
+    /// `CXCallDirectoryManager` addresses the extension by this string, and
+    /// returns `noExtensionFound` for anything else — so it is read out of the
+    /// embedded extension rather than hard-coded. Sideloading tools re-sign the
+    /// app under your own team and rewrite bundle identifiers as they go, which
+    /// would leave a hard-coded constant pointing at nothing.
+    ///
+    /// Only meaningful in the app; inside the extension there are no plug-ins to
+    /// enumerate and the fallback is returned.
+    static var callDirectoryExtensionIdentifier: String {
+        if let plugIns = Bundle.main.builtInPlugInsURL,
+           let contents = try? FileManager.default.contentsOfDirectory(
+               at: plugIns,
+               includingPropertiesForKeys: nil
+           ),
+           let appex = contents.first(where: { $0.pathExtension == "appex" }),
+           let identifier = Bundle(url: appex)?.bundleIdentifier {
+            return identifier
+        }
+        return (Bundle.main.bundleIdentifier ?? "com.example.spamblock") + ".CallDirectory"
+    }
 
     /// App Group container both targets read and write the rule list through.
     static let appGroupIdentifier = "group.com.example.spamblock"
-
-    /// Block list compiled into the extension, used only when the App Group
-    /// container isn't reachable.
-    ///
-    /// App Groups need a paid Apple Developer membership. On a free account the
-    /// capability can't be provisioned, the app and the extension get no shared
-    /// storage, and nothing typed into the app can reach the extension. Listing
-    /// prefixes here — same format as a rule, national digits only — makes the
-    /// extension work anyway, at the cost of needing a rebuild to change them:
-    ///
-    ///     static let builtInPrefixes = ["415", "628555"]
-    ///
-    /// Leave it empty if you have a paid membership; the app is then the only
-    /// source of rules.
-    static let builtInPrefixes: [String] = []
 }
