@@ -89,7 +89,14 @@ final class CallDirectoryController: ObservableObject {
 
         switch code {
         case .noExtensionFound:
-            return "iOS has no call blocking extension for SpamBlock. It was almost certainly removed during sideloading — reinstall with “Remove app extensions” switched off."
+            // Two different sideloading choices end here, and they need
+            // different fixes: the extension was stripped out, or it is still
+            // inside the app but was signed with the app's own profile, which
+            // doesn't match the extension's bundle ID — so iOS never
+            // registers it.
+            return AppConfiguration.isExtensionEmbedded
+                ? "The call blocking extension is inside SpamBlock, but iOS didn’t register it. That happens when it’s signed with the app’s profile instead of its own — reinstall and choose “Keep App Extensions (Register App ID for Each Extension)”."
+                : "iOS has no call blocking extension for SpamBlock. It was removed during sideloading — reinstall and keep app extensions, choosing “Register App ID for Each Extension”."
         case .extensionDisabled:
             return "SpamBlock is switched off in Settings › Phone › Call Blocking & Identification."
         case .maximumEntriesExceeded:

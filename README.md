@@ -93,17 +93,26 @@ Sideloading applies *your* Apple ID's signature to the app, which is what makes
 iOS willing to run it. **Sideloadly** and **AltStore** both do this from a
 Windows PC or a Mac.
 
-**One setting matters more than all the others.** Sideloadly's options include
-**Remove app extensions** (AltStore and similar tools have an equivalent).
-Leave it **off**. This app is almost entirely its extension — stripping it
-leaves an app that installs cleanly, opens fine, shows your list, and blocks
-absolutely nothing, with no error anywhere to explain why. It's the one
-misconfiguration that looks like success.
+**One choice matters more than all the others.** When the sideloader asks what
+to do with the app's extension, choose **Keep App Extensions (Register App ID
+for Each Extension)**. The alternatives both fail silently:
+
+- **Remove App Extensions** strips out the part that actually blocks calls. The
+  app installs, opens and looks right, and SpamBlock never appears in
+  Settings. (The app now shows a red warning when this happens.)
+- **Keep App Extensions (Use Main Profile)** keeps the extension but signs it
+  with the app's profile, which doesn't match the extension's bundle ID. iOS
+  then never registers it: it's in the app, but there's still no SpamBlock row
+  and no toggle in Settings.
+
+Registering a separate App ID costs one more of a free account's ten per week.
+In Sideloadly, the equivalent is simply leaving "Remove app extensions" off.
 
 The steps:
 
 1. Download `SpamBlock.ipa` from the Actions tab (above).
-2. Sideload it with your Apple ID. Keep app extensions.
+2. Sideload it with your Apple ID, choosing **Register App ID for Each
+   Extension** when asked.
 3. On the phone: **Settings › General › VPN & Device Management** → trust your
    developer certificate.
 4. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
