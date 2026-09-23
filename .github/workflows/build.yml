@@ -10,6 +10,11 @@ name: Build
 on:
   push:
     branches: ["**"]
+    # Documentation doesn't change the app. macOS runners bill at ten times the
+    # Linux rate against a monthly allowance, and this project exhausted it
+    # once already — partly on rebuilds that could only produce the same .ipa.
+    paths-ignore:
+      - "**/*.md"
   workflow_dispatch:
 
 concurrency:

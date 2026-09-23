@@ -29,20 +29,30 @@ every number in area code 415, enumerated one at a time:
 never start with 0 or 1, and are never an N11 service code like 411 or 911.
 Those 2,080,000 numbers can't ring, so they aren't sent.)
 
-Apple doesn't publish a limit for how many entries a call directory can hold.
-What happens in practice is that the extension gets killed if it exceeds its
-memory or time budget while loading, and iOS then discards the whole list —
-leaving you with nothing blocked. Rough guidance:
+Apple doesn't publish a limit for how many numbers one extension can hold, and
+when you exceed it, Settings says only **"The data provided by SpamBlock was
+invalid"** — which sounds like a bug and isn't. Measured on a real iPhone:
 
-- **One area code** loads reliably.
-- **Two** works on recent hardware, slowly.
-- **Three or more** will probably be rejected. Narrow them to specific
-  exchanges instead — the app shows a running total and warns you before you
-  get there.
+| One extension holding | Result |
+| --- | --- |
+| 100,000 | loads |
+| 1,980,000 | being tested |
+| 3,960,000 | rejected |
+| 7,920,000 (a whole area code) | rejected |
 
-If that ceiling is a problem, the honest answer is that an iPhone can't do
-better; Android's `CallScreeningService` can block an area code with a
-three-digit prefix check and no list at all.
+So SpamBlock ships **four copies of its extension**, each carrying a quarter of
+the list. They show up in Settings as **SpamBlock — 1 of 4** through **4 of 4**,
+each with its own switch. Commercial blockers do the same thing for the same
+reason: YouMail appears as "1 of 2" and "2 of 2".
+
+A whole area code fills all four, so **one area code is the practical limit**
+on a free Apple ID. Blocking more would mean more copies, and each one costs a
+weekly App ID (see below). To block pieces of several area codes instead,
+narrow them to the exchanges that actually call you — six digits instead of
+three.
+
+Android doesn't have this problem: its `CallScreeningService` blocks an area
+code with a three-digit prefix check and no list at all.
 
 ## Contacts still ring
 
@@ -116,32 +126,36 @@ The steps:
 3. On the phone: **Settings › General › VPN & Device Management** → trust your
    developer certificate.
 4. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
-   **SpamBlock**.
+   **every** SpamBlock part, 1 of 4 through 4 of 4. Each carries a different
+   quarter of the list, so one left off is a gap.
 
 ### Check it actually worked
 
 In order, because each step depends on the one before:
 
-- **SpamBlock appears** in the Call Blocking & Identification list. If it
-  doesn't, the extension isn't in the build you installed — see the setting
-  above.
-- **The app says "Blocking is on."** If it says off, the toggle in step 4 isn't
-  switched.
-- **The app lists your area codes** with a total underneath. Empty means
-  `Shared/BlockedAreaCodes.swift` is still empty.
+- **All four SpamBlock parts appear** in Call Blocking & Identification. None
+  means the extensions were stripped; only some means some were — the app says
+  which, and the fix is the "Register App ID" choice above.
+- **Each part's switch turns on without an error.** "The data provided by
+  SpamBlock was invalid" on a part means it holds more than iOS will take.
+- **The app lists all four parts as On.**
 - **The Contacts row says how many of your contacts will still ring.** If it
   asks for permission, grant it — otherwise contacts in a blocked area code get
   rejected along with everyone else.
-- **Tap "Update block list"** and wait. Millions of entries take a while. An
-  error here is explained in plain language rather than as a CallKit code.
+- **Tap "Update block list"** and wait while it loads each part in turn. A
+  failure names the part and the reason in plain language.
 
-Free Apple IDs get 10 App IDs per 7 days; this app uses two, itself and the
-extension. Signing lasts 7 days, so it needs re-sideloading weekly.
+### The App ID cost
 
-I have not been able to verify the last step end to end — no iPhone here. The
-app and extension compile and their tests pass on a real Xcode toolchain, and
-CI checks that the extension is present and correctly formed inside every
-`.ipa`, so what's left untested is the device itself.
+A free Apple ID can register **10 App IDs per 7 days**, and every extension
+needs its own. SpamBlock uses **five**: the app plus four parts. Signing
+expires weekly, and re-signing re-registers them, so that's five of your ten
+every week, ongoing — leaving five for everything else you sideload.
+
+I have not verified the whole thing end to end on a device. What's verified:
+everything compiles and the tests pass on a real Xcode toolchain; CI checks
+all four parts are present and correctly numbered in every `.ipa`; and one
+extension has been confirmed on a real iPhone to load and block.
 
 ## Changing the list
 
@@ -188,11 +202,12 @@ SpamBlock (app)                       CallDirectoryExtension
 
 | Path | What it does |
 | --- | --- |
-| `Shared/NumberPlan.swift` | Expands prefixes into the ascending, duplicate-free number sequence CallKit demands. The interesting file. |
+| `Shared/NumberPlan.swift` | Expands prefixes into the ascending, duplicate-free number sequence CallKit demands, and splits a list across extensions. The interesting file. |
 | `Shared/NANP.swift` | Which area codes and exchanges can exist, and the `Int64` encoding CallKit uses. |
 | `Shared/PrefixValidator.swift` | Normalises typed input, rejects prefixes no real number can match. |
 | `Shared/BlockedAreaCodes.swift` | The compiled-in list. What you edit on a free Apple ID. |
 | `Shared/ContactExemptions.swift` | Reads the address book so known callers aren't blocked. |
+| `Shared/ExtensionSlice.swift` | Which part of the list each copy of the extension carries. |
 | `Shared/RuleStore.swift` | The rule list in the App Group container, on a paid account. |
 | `CallDirectoryExtension/` | The extension iOS actually calls. Deliberately minimal. |
 | `SpamBlock/` | SwiftUI app: edit rules, watch the entry count, trigger reloads. |
@@ -206,6 +221,10 @@ order as the numbers they expand to. `Tests/NumberPlanTests.swift` checks this
 over random rule sets and over a full area code.
 
 ## Troubleshooting
+
+**"Error Enabling Extension — The data provided by SpamBlock was invalid."**
+Almost always means that part holds more numbers than iOS will load into one
+extension, despite the wording. Fewer numbers per part fixes it.
 
 **Calls still come through.** Check the toggle in Settings, then tap **Update
 block list** in the app and wait for it to finish. A list that's installed but
