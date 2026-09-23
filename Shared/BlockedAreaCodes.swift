@@ -22,13 +22,12 @@ import Foundation
 
 enum BlockedAreaCodes {
     static let prefixes: [String] = [
-        // iOS rejected the full "909" (7,920,000 numbers) with "the data
-        // provided was invalid" when the extension was switched on, so this is
-        // the lower half of the area code — exchanges 200 through 599 — at
-        // 3,960,000. Restore "909" once the ceiling is known.
-        "9092",  // (909) 2xx-xxxx
-        "9093",  // (909) 3xx-xxxx
-        "9094",  // (909) 4xx-xxxx
-        "9095",  // (909) 5xx-xxxx
+        // Diagnostic. The full "909" (7,920,000) and its lower half
+        // (3,960,000) were both rejected with "the data provided was
+        // invalid", even once the extension was signed with its own App ID.
+        // 100,000 is far below any plausible per-extension ceiling, so this
+        // separates the two remaining explanations: if it loads, the list was
+        // too large; if it fails, there is a bug that doesn't depend on size.
+        "90920",  // (909) 200-0000 through (909) 209-9999
     ]
 }
