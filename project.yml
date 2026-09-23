@@ -25,6 +25,31 @@ settings:
     # Set this to your Apple Developer Team ID to build to a device, or leave it
     # blank and pick a team in Xcode's Signing & Capabilities tab.
     DEVELOPMENT_TEAM: ""
+    # How many copies of the Call Directory extension the app ships. Each
+    # carries one part of the block list, because one extension can only hold
+    # so many numbers. Must match the CallDirectoryExtension targets below —
+    # CI checks the built .ipa. Every copy costs one of a free Apple ID's ten
+    # App IDs a week, so this is a trade between coverage and that budget.
+    SPAMBLOCK_SLICE_COUNT: "4"
+
+targetTemplates:
+
+  # Every copy of the extension is built from the same sources and Info.plist;
+  # SPAMBLOCK_SLICE_NUMBER is the only thing that differs, and it decides which
+  # part of the list that copy loads.
+  CallDirectory:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: CallDirectoryExtension
+    settings:
+      base:
+        INFOPLIST_FILE: CallDirectoryExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: CallDirectoryExtension/CallDirectoryExtension.entitlements
+    dependencies:
+      - sdk: CallKit.framework
+      - sdk: Contacts.framework
 
 targets:
 
@@ -44,23 +69,44 @@ targets:
     dependencies:
       - target: CallDirectoryExtension
         embed: true
+      - target: CallDirectoryExtension2
+        embed: true
+      - target: CallDirectoryExtension3
+        embed: true
+      - target: CallDirectoryExtension4
+        embed: true
       - sdk: CallKit.framework
       - sdk: Contacts.framework
 
+  # Part 1 keeps the original bundle identifier, so an existing install — and
+  # the App ID already registered for it — carries over.
   CallDirectoryExtension:
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: Shared
-      - path: CallDirectoryExtension
+    templates: [CallDirectory]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory
-        INFOPLIST_FILE: CallDirectoryExtension/Info.plist
-        CODE_SIGN_ENTITLEMENTS: CallDirectoryExtension/CallDirectoryExtension.entitlements
-    dependencies:
-      - sdk: CallKit.framework
-      - sdk: Contacts.framework
+        SPAMBLOCK_SLICE_NUMBER: "1"
+
+  CallDirectoryExtension2:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory2
+        SPAMBLOCK_SLICE_NUMBER: "2"
+
+  CallDirectoryExtension3:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory3
+        SPAMBLOCK_SLICE_NUMBER: "3"
+
+  CallDirectoryExtension4:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory4
+        SPAMBLOCK_SLICE_NUMBER: "4"
 
   SpamBlockTests:
     type: bundle.unit-test
@@ -81,6 +127,9 @@ schemes:
       targets:
         SpamBlock: all
         CallDirectoryExtension: all
+        CallDirectoryExtension2: all
+        CallDirectoryExtension3: all
+        CallDirectoryExtension4: all
     run:
       config: Debug
     test:

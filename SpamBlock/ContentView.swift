@@ -11,7 +11,11 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
-                if !AppConfiguration.isExtensionEmbedded { missingExtensionSection }
+                if !AppConfiguration.isExtensionEmbedded {
+                    missingExtensionSection
+                } else if !AppConfiguration.missingPartNumbers.isEmpty {
+                    missingPartsSection
+                }
                 if !list.isEditable { compiledInListSection }
                 statusSection
                 contactsSection
@@ -68,13 +72,21 @@ struct ContentView: View {
             }
             .padding(.vertical, 4)
 
+            // Each part has its own switch in Settings, and a part left off is
+            // a gap in the list, so they're listed rather than summarised.
+            if directory.parts.count > 1 {
+                ForEach(directory.parts, id: \.slice.number) { part in
+                    partRow(part.slice)
+                }
+            }
+
             if directory.status != .enabled {
                 Button("Open call blocking settings") { directory.openSettings() }
             }
 
             Button(action: applyChanges) {
                 HStack {
-                    Text(list.hasUnappliedChanges ? "Update block list" : "Reload block list")
+                    Text(reloadButtonTitle)
                     Spacer()
                     if directory.isReloading {
                         ProgressView()
@@ -91,8 +103,36 @@ struct ContentView: View {
                 messageRow(text: message.text, kind: message.kind)
             }
         } footer: {
-            Text("iOS only blocks calls once SpamBlock is switched on under Settings › Phone › Call Blocking & Identification, and only after the list has been loaded.")
+            Text(directory.parts.count > 1
+                 ? "Every SpamBlock part has to be switched on under Settings › Apps › Phone › Call Blocking & Identification. Each carries a different slice of the list, so one left off is a gap."
+                 : "iOS only blocks calls once SpamBlock is switched on under Settings › Apps › Phone › Call Blocking & Identification, and only after the list has been loaded.")
         }
+    }
+
+    private var reloadButtonTitle: String {
+        if let part = directory.reloadingPart, directory.parts.count > 1 {
+            return "Loading part \(part) of \(directory.parts.count)…"
+        }
+        return list.hasUnappliedChanges ? "Update block list" : "Reload block list"
+    }
+
+    private func partRow(_ slice: ExtensionSlice) -> some View {
+        let state = directory.status(ofPart: slice.number)
+        return HStack {
+            Text("SpamBlock — \(slice.number) of \(slice.count)")
+            Spacer()
+            switch state {
+            case .enabled:
+                Label("On", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            case .disabled:
+                Label("Off", systemImage: "xmark.circle.fill")
+                    .foregroundStyle(.orange)
+            case .unknown:
+                Text("—").foregroundStyle(.secondary)
+            }
+        }
+        .font(.callout)
     }
 
     private var statusIcon: String {
@@ -146,6 +186,29 @@ struct ContentView: View {
                 Text("This copy of SpamBlock was installed without its extension, which is the part that actually blocks calls. Nothing below has any effect, and SpamBlock won’t appear under Call Blocking & Identification.")
                     .font(.callout)
                 Text("Sideload the .ipa again with “Remove app extensions” switched off.")
+                    .font(.callout)
+                    .fontWeight(.semibold)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    /// Shown when a sideloader kept some parts and dropped others.
+    private var missingPartsSection: some View {
+        let missing = AppConfiguration.missingPartNumbers
+        let total = AppConfiguration.embeddedExtensions.first?.slice.count ?? 0
+        let names = missing.map { "\($0) of \(total)" }.joined(separator: ", ")
+        return Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Label {
+                    Text(missing.count == 1 ? "A part is missing" : "\(missing.count) parts are missing")
+                        .font(.headline)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+                Text("SpamBlock \(names) wasn’t installed, so that slice of the list isn’t blocked.")
+                    .font(.callout)
+                Text("Sideload again and keep every extension, choosing “Register App ID for Each Extension”.")
                     .font(.callout)
                     .fontWeight(.semibold)
             }
@@ -269,15 +332,17 @@ struct ContentView: View {
 
     private var totalFooter: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(list.entryCount.formatted()) numbers in total.")
+            Text(list.partCount > 1
+                 ? "\(list.entryCount.formatted()) numbers in total, split into \(list.partCount) parts of up to \(list.largestPart.formatted()) each."
+                 : "\(list.entryCount.formatted()) numbers in total.")
             switch list.budgetLevel {
             case .comfortable:
                 EmptyView()
             case .risky:
-                Text("That’s a lot for iOS to hold. It may load slowly, or refuse to load on an older iPhone.")
+                Text("That’s more per part than has been seen to load. It may be rejected.")
                     .foregroundStyle(.orange)
             case .overBudget:
-                Text("This is more than iOS is likely to accept. Remove an area code, or narrow one to the exchanges that actually call you — tap + and enter six digits instead of three.")
+                Text("That’s more per part than iOS has accepted. Expect it to be rejected when switched on.")
                     .foregroundStyle(.red)
             }
         }

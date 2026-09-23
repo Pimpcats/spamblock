@@ -16,17 +16,15 @@ import Foundation
 //      "415555"      just the (415) 555 exchange       10,000 numbers
 //      "4155550134"  one specific number                    1 number
 //
-//  Keep the total under about 8 million — roughly one full area code. The app
-//  shows the running total, and README.md explains the ceiling.
+//  The list is split evenly across the app's extensions — four of them,
+//  showing in Settings as "SpamBlock — 1 of 4" through "4 of 4" — because one
+//  extension can only hold so much. Keep each part under about 2 million: a
+//  whole area code (7.9 million) fills all four. The app shows the per-part
+//  size, and README.md explains the limit.
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum BlockedAreaCodes {
     static let prefixes: [String] = [
-        // Finding the per-extension ceiling. 100,000 loads; 3,960,000 and
-        // 7,920,000 are rejected. This is a quarter of 909 — exchanges 200
-        // through 399, 1,980,000 numbers. If one extension holds this, four
-        // of them cover the whole area code.
-        "9092",  // (909) 2xx-xxxx
-        "9093",  // (909) 3xx-xxxx
+        "909",  // San Bernardino / Inland Empire, CA — 7,920,000 numbers
     ]
 }

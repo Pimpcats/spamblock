@@ -30,9 +30,15 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
         // submits nothing at all while looking like it worked.
         let store = RuleStore.shared
         let stored = store.isAvailable ? store.load() : []
-        let plan = stored.isEmpty
-            ? NumberPlan(prefixes: BlockedAreaCodes.prefixes)
-            : NumberPlan(rules: stored)
+        let listed = stored.isEmpty
+            ? BlockedAreaCodes.prefixes
+            : stored.filter(\.isEnabled).map(\.prefix)
+
+        // One extension can't hold a whole area code, so several copies of this
+        // one each carry a part of the list. They all compute the same split and
+        // keep only their own part; see ExtensionSlice.
+        let slice = ExtensionSlice.current
+        let plan = NumberPlan(prefixes: NumberPlan.slices(of: listed, count: slice.count)[slice.index])
 
         // Read here rather than being handed the numbers by the app: that would
         // need an App Group, which a free Apple ID can't provision. Empty when
@@ -42,7 +48,7 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
 
         let source = stored.isEmpty ? "built-in list" : "app group"
         logger.log("""
-            Loading \(plan.prefixes.count) prefixes, \(plan.entryCount) entries \
+            Part \(slice.number) of \(slice.count): loading \(plan.entryCount) entries \
             from \(source, privacy: .public), \
             exempting \(plan.exemptedCount(from: exempt)) of \(exempt.count) contacts
             """)

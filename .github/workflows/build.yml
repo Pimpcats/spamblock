@@ -117,36 +117,64 @@ jobs:
           (cd "$RUNNER_TEMP" && zip -qry SpamBlock.ipa Payload)
           ls -lh "$RUNNER_TEMP/SpamBlock.ipa"
 
-      - name: Verify the extension is embedded
+      - name: Verify every extension is embedded
         run: |
-          # An .ipa that installs fine but has no extension inside blocks
-          # nothing, and says nothing about why — so assert it here rather
-          # than discovering it on a phone.
+          # An .ipa missing an extension installs cleanly and leaves that part
+          # of the list unblocked, with nothing to say why — so every part is
+          # checked here rather than discovered on a phone.
           cd "$RUNNER_TEMP"
           rm -rf verify && unzip -qo SpamBlock.ipa -d verify
           app="verify/Payload/SpamBlock.app"
+          # A missing key prints nothing rather than aborting the step under
+          # bash -e, so the checks below can say which key is missing.
+          plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$2" 2>/dev/null || true; }
 
           echo "--- bundle ---"
           find "$app" -maxdepth 2 -mindepth 1 | sed "s|$app/||"
 
-          appex=$(find "$app/PlugIns" -maxdepth 1 -name '*.appex' 2>/dev/null | head -1)
-          if [ -z "$appex" ]; then
-            echo "::error::no .appex inside the .ipa — the app would install but never block a call"
+          expected=$(grep -E '^ +SPAMBLOCK_SLICE_COUNT:' "$GITHUB_WORKSPACE/project.yml" | grep -oE '[0-9]+' | head -1)
+          if [ -z "$expected" ]; then
+            echo "::error::SPAMBLOCK_SLICE_COUNT not found in project.yml"
             exit 1
           fi
-          echo "--- extension: $(basename "$appex") ---"
+          echo "expected parts: $expected"
 
-          point=$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPointIdentifier' "$appex/Info.plist")
-          echo "extension point:  $point"
-          echo "principal class:  $(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPrincipalClass' "$appex/Info.plist")"
-          echo "bundle id:        $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$appex/Info.plist")"
-          echo "settings name:    $(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$appex/Info.plist")"
+          found=0
+          numbers=""
+          for appex in "$app"/PlugIns/*.appex; do
+            [ -d "$appex" ] || continue
+            info="$appex/Info.plist"
+            point=$(plist NSExtension:NSExtensionPointIdentifier "$info")
+            number=$(plist SpamBlockSliceNumber "$info")
+            count=$(plist SpamBlockSliceCount "$info")
+            printf '  %-32s %-40s part %s of %s  "%s"\n' \
+              "$(basename "$appex")" "$(plist CFBundleIdentifier "$info")" \
+              "$number" "$count" "$(plist CFBundleDisplayName "$info")"
 
-          if [ "$point" != "com.apple.callkit.call-directory" ]; then
-            echo "::error::extension point is '$point', not a call directory"
+            if [ "$point" != "com.apple.callkit.call-directory" ]; then
+              echo "::error::$(basename "$appex") is a '$point' extension, not a call directory"
+              exit 1
+            fi
+            if [ "$count" != "$expected" ]; then
+              echo "::error::$(basename "$appex") says there are $count parts; the build has $expected"
+              exit 1
+            fi
+            found=$((found + 1))
+            numbers="$numbers $number"
+          done
+
+          if [ "$found" -ne "$expected" ]; then
+            echo "::error::found $found call directory extensions, expected $expected"
             exit 1
           fi
-          echo "OK: call directory extension is embedded"
+          # Every part number exactly once, 1 through N.
+          have=$(echo $numbers | tr ' ' '\n' | sort -n | tr '\n' ' ' | sed 's/ $//')
+          want=$(seq 1 "$expected" | tr '\n' ' ' | sed 's/ $//')
+          if [ "$have" != "$want" ]; then
+            echo "::error::part numbers are [$have], expected [$want]"
+            exit 1
+          fi
+          echo "OK: all $expected call directory extensions embedded, parts $want"
 
       - name: Upload the .ipa
         uses: actions/upload-artifact@v4

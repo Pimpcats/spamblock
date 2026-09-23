@@ -9,40 +9,57 @@ import Foundation
 /// nothing).
 enum AppConfiguration {
 
-    /// Bundle identifier of the embedded Call Directory extension, or nil when
-    /// the app carries no extension at all.
+    /// A Call Directory extension found inside the app.
+    struct EmbeddedExtension: Equatable {
+        let bundleIdentifier: String
+        let slice: ExtensionSlice
+    }
+
+    /// Every Call Directory extension inside the app, in part order.
     ///
     /// Read from the bundle rather than hard-coded, because sideloading tools
     /// re-sign under your own team and rewrite bundle identifiers as they go.
-    /// Nil is the case that matters: sideloaders offer a "remove app
-    /// extensions" option to conserve App IDs against a free account's quota,
-    /// and with it the app installs, opens and looks entirely normal while
-    /// being incapable of blocking a single call. iOS reports that only as
-    /// `noExtensionFound` on the next API call, so it is detected directly.
+    /// Empty is the case that matters most: sideloaders offer to remove app
+    /// extensions to conserve App IDs, and with that the app installs, opens
+    /// and looks entirely normal while being unable to block a single call.
     ///
-    /// Always nil inside the extension itself — an extension has no plug-ins to
-    /// enumerate — so only the app should consult it.
-    static let embeddedExtensionIdentifier: String? = {
+    /// Only meaningful in the app — an extension has no plug-ins of its own.
+    static let embeddedExtensions: [EmbeddedExtension] = {
         guard let plugIns = Bundle.main.builtInPlugInsURL,
               let contents = try? FileManager.default.contentsOfDirectory(
                   at: plugIns,
                   includingPropertiesForKeys: nil
-              ),
-              let appex = contents.first(where: { $0.pathExtension == "appex" })
-        else { return nil }
-        return Bundle(url: appex)?.bundleIdentifier
+              )
+        else { return [] }
+
+        return contents
+            .filter { $0.pathExtension == "appex" }
+            .compactMap { url -> EmbeddedExtension? in
+                guard let bundle = Bundle(url: url),
+                      let identifier = bundle.bundleIdentifier
+                else { return nil }
+                let point = (bundle.infoDictionary?["NSExtension"] as? [String: Any])?["NSExtensionPointIdentifier"] as? String
+                guard point == "com.apple.callkit.call-directory" else { return nil }
+                return EmbeddedExtension(
+                    bundleIdentifier: identifier,
+                    slice: ExtensionSlice(infoDictionary: bundle.infoDictionary) ?? .whole
+                )
+            }
+            .sorted { $0.slice.number < $1.slice.number }
     }()
 
-    /// Whether this copy of the app actually shipped with its extension.
-    static var isExtensionEmbedded: Bool { embeddedExtensionIdentifier != nil }
+    static var isExtensionEmbedded: Bool { !embeddedExtensions.isEmpty }
 
-    /// The identifier `CXCallDirectoryManager` is addressed with.
+    /// Parts the build shipped with that this install is missing.
     ///
-    /// Falls back to the conventional name when nothing is embedded, so calls
-    /// still return a meaningful CallKit error instead of being skipped.
-    static var callDirectoryExtensionIdentifier: String {
-        embeddedExtensionIdentifier
-            ?? (Bundle.main.bundleIdentifier ?? "com.example.spamblock") + ".CallDirectory"
+    /// A sideloader's "choose app extensions" can keep some and drop others,
+    /// which leaves those parts of the list unblocked with nothing to show
+    /// for it in the app. Every part records how many there were meant to be,
+    /// so any survivor can tell.
+    static var missingPartNumbers: [Int] {
+        guard let expected = embeddedExtensions.first?.slice.count else { return [] }
+        let present = Set(embeddedExtensions.map(\.slice.number))
+        return (1...expected).filter { !present.contains($0) }
     }
 
     /// App Group container both targets read and write the rule list through.

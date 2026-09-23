@@ -4,10 +4,16 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<!-- This is the name that appears in
-	     Settings > Phone > Call Blocking & Identification. -->
+	<!-- The name shown under Settings > Apps > Phone > Call Blocking &
+	     Identification. Every copy of the extension shares this file; the two
+	     build settings below tell them apart. -->
 	<key>CFBundleDisplayName</key>
-	<string>SpamBlock</string>
+	<string>SpamBlock — $(SPAMBLOCK_SLICE_NUMBER) of $(SPAMBLOCK_SLICE_COUNT)</string>
+	<!-- Which part of the block list this copy loads. See ExtensionSlice. -->
+	<key>SpamBlockSliceNumber</key>
+	<string>$(SPAMBLOCK_SLICE_NUMBER)</string>
+	<key>SpamBlockSliceCount</key>
+	<string>$(SPAMBLOCK_SLICE_COUNT)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

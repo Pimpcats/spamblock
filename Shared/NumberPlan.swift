@@ -152,16 +152,113 @@ struct NumberPlan {
     }
 }
 
-/// Rough ceilings for how much iOS will swallow.
+// MARK: - Splitting across extensions
+
+extension NumberPlan {
+
+    /// Prefix length the list is cut into before splitting: the area code plus
+    /// the first two digits of the exchange. No piece is larger than 100,000
+    /// numbers, so no part can end up more than that over its fair share.
+    static let sliceGrain = 5
+
+    /// The non-empty sub-prefixes of `prefix` at `sliceGrain` digits, in
+    /// ascending order. A prefix already that long is returned unchanged.
+    ///
+    /// `909` becomes `90920` through `90999` — 80 pieces — while `90910`
+    /// through `90919` are dropped, since no exchange starts with 1.
+    static func refine(_ prefix: String) -> [String] {
+        guard prefix.count < sliceGrain else { return [prefix] }
+        let width = sliceGrain - prefix.count
+        var pieces: [String] = []
+        for suffix in 0..<powersOfTen[width] {
+            let digits = String(suffix)
+            let piece = prefix + String(repeating: "0", count: width - digits.count) + digits
+            if !candidateExchanges(for: piece).isEmpty {
+                pieces.append(piece)
+            }
+        }
+        return pieces
+    }
+
+    /// Splits `prefixes` into exactly `count` contiguous parts, making the
+    /// largest part as small as possible.
+    ///
+    /// One Call Directory extension can only hold so many numbers — past its
+    /// limit iOS rejects the whole list — so a large list is spread across
+    /// several extensions that each load one part. The part that has to fit is
+    /// the largest one, so that is what this minimises: it binary-searches the
+    /// smallest cap at which packing pieces in order, never exceeding the cap,
+    /// needs no more than `count` parts. Packing greedily is optimal for any
+    /// fixed cap, so the smallest workable cap is the smallest achievable
+    /// maximum.
+    ///
+    /// Every extension runs this independently and keeps only its own part, so
+    /// it has to come out identically each time; normalising the input first
+    /// makes it independent of order and duplicates. Parts are disjoint,
+    /// ascending, and together cover the list exactly. Trailing parts are empty
+    /// when there are fewer pieces than parts.
+    static func slices(of prefixes: [String], count: Int) -> [[String]] {
+        guard count > 0 else { return [] }
+        var parts = Array(repeating: [String](), count: count)
+
+        let pieces = reduce(prefixes: prefixes).flatMap { refine($0) }
+        let sizes = pieces.map { entryCount(for: $0) }
+        guard let largestPiece = sizes.max() else { return parts }
+
+        func partsNeeded(cap: Int) -> Int {
+            var needed = 1
+            var current = 0
+            for size in sizes {
+                if current + size > cap {
+                    needed += 1
+                    current = size
+                } else {
+                    current += size
+                }
+            }
+            return needed
+        }
+
+        var low = largestPiece
+        var high = sizes.reduce(0, +)
+        while low < high {
+            let middle = (low + high) / 2
+            if partsNeeded(cap: middle) <= count {
+                high = middle
+            } else {
+                low = middle + 1
+            }
+        }
+
+        // Pack again at the cap found, exactly as partsNeeded counted.
+        var index = 0
+        var current = 0
+        for (piece, size) in zip(pieces, sizes) {
+            if current + size > low && current > 0 {
+                index += 1
+                current = 0
+            }
+            parts[index].append(piece)
+            current += size
+        }
+        return parts
+    }
+}
+
+/// How many numbers one Call Directory extension can load — measured, since
+/// Apple publishes no limit.
 ///
-/// Apple documents no hard limit; what actually happens is that the extension
-/// is killed if it exceeds its memory or time budget while loading, surfacing
-/// as `maximumEntriesExceeded` or `loadingInterrupted`. These thresholds are
-/// judgement calls, sized so that one full area code — 7.92 million numbers —
-/// sits inside the comfortable band.
+/// On the iPhone this was built against, one extension accepted 100,000 and
+/// rejected 3,960,000 and 7,920,000, each time with Settings reporting only
+/// "the data provided was invalid". The first guess here was that a whole area
+/// code would fit; it did not, by a wide margin. These bands are per extension,
+/// because that is where the limit applies — a larger list is split across
+/// several (see `NumberPlan.slices`).
 enum EntryBudget {
-    static let comfortable = 8_000_000
-    static let risky = 16_000_000
+    /// Loaded without complaint on a real device.
+    static let comfortable = 1_980_000
+    /// Untested. The first size known to fail is 3,960,000.
+    static let risky = 3_950_000
 
     enum Level {
         case comfortable, risky, overBudget

@@ -23,7 +23,21 @@ final class BlockListViewModel: ObservableObject {
 
     var plan: NumberPlan { NumberPlan(rules: rules) }
     var entryCount: Int { plan.entryCount }
-    var budgetLevel: EntryBudget.Level { EntryBudget.level(for: entryCount) }
+
+    /// How many parts the list is split into — as many as this build ships
+    /// extensions, recorded in each of them.
+    var partCount: Int {
+        AppConfiguration.embeddedExtensions.first?.slice.count ?? 1
+    }
+
+    /// The largest part, which is the number that has to fit in one extension.
+    var largestPart: Int {
+        NumberPlan.slices(of: plan.prefixes, count: partCount)
+            .map { NumberPlan(prefixes: $0).entryCount }
+            .max() ?? 0
+    }
+
+    var budgetLevel: EntryBudget.Level { EntryBudget.level(for: largestPart) }
     var existingPrefixes: Set<String> { Set(rules.map(\.prefix)) }
 
     /// Whether rules edited here can reach the extension at all.

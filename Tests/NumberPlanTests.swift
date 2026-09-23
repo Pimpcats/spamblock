@@ -233,6 +233,97 @@ final class NumberPlanTests: XCTestCase {
         XCTAssertNil(ContactExemptions.phoneNumber(from: "909-411-0134"))     // N11 exchange
     }
 
+    // MARK: - Splitting across extensions
+
+    private func size(_ prefixes: [String]) -> Int {
+        NumberPlan(prefixes: prefixes).entryCount
+    }
+
+    func testWholeAreaCodeSplitsIntoFourEqualParts() {
+        let parts = NumberPlan.slices(of: ["909"], count: 4)
+        XCTAssertEqual(parts.map(size), [1_980_000, 1_980_000, 1_980_000, 1_980_000])
+        // Part 1 is exchanges 200-399: exactly what one extension was shown to hold.
+        XCTAssertEqual(parts[0].first, "90920")
+        XCTAssertEqual(parts[0].last, "90939")
+    }
+
+    /// The largest part is what has to fit in one extension, so that is what
+    /// the split minimises — here, better than cutting at the nearest boundary
+    /// past each even share, which gives 1,680,000.
+    func testSplitMinimisesTheLargestPart() {
+        XCTAssertEqual(NumberPlan.slices(of: ["909"], count: 5).map(size).max(), 1_590_000)
+        XCTAssertEqual(NumberPlan.slices(of: ["909"], count: 8).map(size).max(), 990_000)
+    }
+
+    func testPartsTogetherAreExactlyTheWholePlan() {
+        var whole: [Int64] = []
+        NumberPlan(prefixes: ["9092", "213555"]).forEachNumber { whole.append($0) }
+
+        var joined: [Int64] = []
+        for part in NumberPlan.slices(of: ["9092", "213555"], count: 3) {
+            NumberPlan(prefixes: part).forEachNumber { joined.append($0) }
+        }
+        XCTAssertEqual(joined, whole)
+    }
+
+    func testEveryPartIsAValidPlanOnItsOwn() {
+        for part in NumberPlan.slices(of: ["909", "213", "4155550134"], count: 6) {
+            XCTAssertEqual(NumberPlan.reduce(prefixes: part), part)
+        }
+    }
+
+    /// Each extension computes the split on its own and keeps one part, so every
+    /// one of them has to arrive at the same split.
+    func testSplitIgnoresOrderAndDuplicates() {
+        XCTAssertEqual(
+            NumberPlan.slices(of: ["909", "213"], count: 5),
+            NumberPlan.slices(of: ["213", "909", "909", "9092"], count: 5)
+        )
+    }
+
+    func testSplitAlwaysReturnsTheRequestedNumberOfParts() {
+        XCTAssertEqual(NumberPlan.slices(of: ["909"], count: 0), [])
+        XCTAssertEqual(NumberPlan.slices(of: [], count: 3), [[], [], []])
+        // Fewer pieces than parts: the extras load nothing rather than crash.
+        XCTAssertEqual(NumberPlan.slices(of: ["9095551234"], count: 4).map(\.count), [1, 0, 0, 0])
+    }
+
+    func testRefineCutsToExchangeGroups() {
+        XCTAssertEqual(NumberPlan.refine("909").count, 80)
+        XCTAssertEqual(NumberPlan.refine("909").first, "90920")
+        XCTAssertEqual(NumberPlan.refine("909").last, "90999")
+        XCTAssertEqual(NumberPlan.refine("90920"), ["90920"])
+        XCTAssertEqual(NumberPlan.refine("9091"), [])  // no exchange starts with 1
+    }
+
+    // MARK: - Which part an extension carries
+
+    func testSliceReadsFromInfoPlistStrings() {
+        let slice = ExtensionSlice(infoDictionary: ["SpamBlockSliceNumber": "2", "SpamBlockSliceCount": "4"])
+        XCTAssertEqual(slice, ExtensionSlice(number: 2, count: 4))
+        XCTAssertEqual(slice?.index, 1)
+    }
+
+    func testSliceAcceptsPlistNumbers() {
+        XCTAssertEqual(
+            ExtensionSlice(infoDictionary: ["SpamBlockSliceNumber": 3, "SpamBlockSliceCount": 4]),
+            ExtensionSlice(number: 3, count: 4)
+        )
+    }
+
+    func testSliceRejectsWhatIsntAPosition() {
+        XCTAssertNil(ExtensionSlice(infoDictionary: nil))
+        XCTAssertNil(ExtensionSlice(infoDictionary: [:]))
+        XCTAssertNil(ExtensionSlice(infoDictionary: ["SpamBlockSliceNumber": "0", "SpamBlockSliceCount": "4"]))
+        XCTAssertNil(ExtensionSlice(infoDictionary: ["SpamBlockSliceNumber": "5", "SpamBlockSliceCount": "4"]))
+        XCTAssertNil(ExtensionSlice(infoDictionary: ["SpamBlockSliceNumber": "1", "SpamBlockSliceCount": "0"]))
+        // What a build setting that was never defined leaves behind.
+        XCTAssertNil(ExtensionSlice(infoDictionary: [
+            "SpamBlockSliceNumber": "$(SPAMBLOCK_SLICE_NUMBER)",
+            "SpamBlockSliceCount": "4",
+        ]))
+    }
+
     // MARK: - Input handling
 
     func testNormalisationStripsFormattingAndCountryCode() {
