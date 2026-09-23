@@ -22,12 +22,11 @@ import Foundation
 
 enum BlockedAreaCodes {
     static let prefixes: [String] = [
-        // Diagnostic. The full "909" (7,920,000) and its lower half
-        // (3,960,000) were both rejected with "the data provided was
-        // invalid", even once the extension was signed with its own App ID.
-        // 100,000 is far below any plausible per-extension ceiling, so this
-        // separates the two remaining explanations: if it loads, the list was
-        // too large; if it fails, there is a bug that doesn't depend on size.
-        "90920",  // (909) 200-0000 through (909) 209-9999
+        // Finding the per-extension ceiling. 100,000 loads; 3,960,000 and
+        // 7,920,000 are rejected. This is a quarter of 909 — exchanges 200
+        // through 399, 1,980,000 numbers. If one extension holds this, four
+        // of them cover the whole area code.
+        "9092",  // (909) 2xx-xxxx
+        "9093",  // (909) 3xx-xxxx
     ]
 }
