@@ -20,13 +20,19 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
     override func beginRequest(with context: CXCallDirectoryExtensionContext) {
         context.delegate = self
 
-        // Without a provisioned App Group there is no shared container to read,
-        // so the compiled-in list is the only thing available. That is the
-        // normal path on a free Apple ID — see Shared/BlockedAreaCodes.swift.
+        // The compiled-in list is the normal source on a free Apple ID, which
+        // can't provision an App Group — see Shared/BlockedAreaCodes.swift.
+        //
+        // Falling back on an *empty* result, not just an absent container: a
+        // sideloader can leave the App Group entitlement in place so a
+        // container exists while the rules file inside it never does. Keying
+        // off availability alone then yields an empty plan, and the extension
+        // submits nothing at all while looking like it worked.
         let store = RuleStore.shared
-        let plan = store.isAvailable
-            ? NumberPlan(rules: store.load())
-            : NumberPlan(prefixes: BlockedAreaCodes.prefixes)
+        let stored = store.isAvailable ? store.load() : []
+        let plan = stored.isEmpty
+            ? NumberPlan(prefixes: BlockedAreaCodes.prefixes)
+            : NumberPlan(rules: stored)
 
         // Read here rather than being handed the numbers by the app: that would
         // need an App Group, which a free Apple ID can't provision. Empty when
@@ -34,7 +40,7 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
         // the app says so plainly rather than leaving it to be discovered.
         let exempt = ContactExemptions.sortedNumbers()
 
-        let source = store.isAvailable ? "app group" : "built-in list"
+        let source = stored.isEmpty ? "built-in list" : "app group"
         logger.log("""
             Loading \(plan.prefixes.count) prefixes, \(plan.entryCount) entries \
             from \(source, privacy: .public), \
