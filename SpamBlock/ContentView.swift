@@ -11,6 +11,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !AppConfiguration.isExtensionEmbedded { missingExtensionSection }
                 if !list.isEditable { compiledInListSection }
                 statusSection
                 contactsSection
@@ -123,6 +124,32 @@ struct ContentView: View {
         case .enabled: return "iOS is using your block list."
         case .disabled: return "Switch SpamBlock on in Settings to start blocking."
         case .unknown: return "iOS hasn’t reported whether SpamBlock is switched on."
+        }
+    }
+
+    // MARK: - Missing extension
+
+    /// Shown when the app shipped without its extension.
+    ///
+    /// This is the failure that looks most like success: the app installs,
+    /// opens, lists the area codes and offers every button, while iOS has
+    /// nothing to block with and never says so. Worth stating at the top, in
+    /// terms of the thing that caused it.
+    private var missingExtensionSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 8) {
+                Label {
+                    Text("No call blocking extension").font(.headline)
+                } icon: {
+                    Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+                }
+                Text("This copy of SpamBlock was installed without its extension, which is the part that actually blocks calls. Nothing below has any effect, and SpamBlock won’t appear under Call Blocking & Identification.")
+                    .font(.callout)
+                Text("Sideload the .ipa again with “Remove app extensions” switched off.")
+                    .font(.callout)
+                    .fontWeight(.semibold)
+            }
+            .padding(.vertical, 4)
         }
     }
 

@@ -89,7 +89,7 @@ final class CallDirectoryController: ObservableObject {
 
         switch code {
         case .noExtensionFound:
-            return "iOS can’t find the call blocking extension. Check that AppConfiguration.callDirectoryExtensionIdentifier matches the extension target’s bundle identifier exactly."
+            return "iOS has no call blocking extension for SpamBlock. It was almost certainly removed during sideloading — reinstall with “Remove app extensions” switched off."
         case .extensionDisabled:
             return "SpamBlock is switched off in Settings › Phone › Call Blocking & Identification."
         case .maximumEntriesExceeded:

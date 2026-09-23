@@ -9,29 +9,41 @@ import Foundation
 /// nothing).
 enum AppConfiguration {
 
-    /// Bundle identifier of the Call Directory app extension.
+    /// Bundle identifier of the embedded Call Directory extension, or nil when
+    /// the app carries no extension at all.
     ///
-    /// `CXCallDirectoryManager` addresses the extension by this string, and
-    /// returns `noExtensionFound` for anything else — so it is read out of the
-    /// embedded extension rather than hard-coded. Sideloading tools re-sign the
-    /// app under your own team and rewrite bundle identifiers as they go, which
-    /// would leave a hard-coded constant pointing at nothing.
+    /// Read from the bundle rather than hard-coded, because sideloading tools
+    /// re-sign under your own team and rewrite bundle identifiers as they go.
+    /// Nil is the case that matters: sideloaders offer a "remove app
+    /// extensions" option to conserve App IDs against a free account's quota,
+    /// and with it the app installs, opens and looks entirely normal while
+    /// being incapable of blocking a single call. iOS reports that only as
+    /// `noExtensionFound` on the next API call, so it is detected directly.
     ///
-    /// Only meaningful in the app; inside the extension there are no plug-ins to
-    /// enumerate and the fallback is returned. Resolved once — it reads the
-    /// filesystem, and the answer can't change while the app is running.
-    static let callDirectoryExtensionIdentifier: String = {
-        if let plugIns = Bundle.main.builtInPlugInsURL,
-           let contents = try? FileManager.default.contentsOfDirectory(
-               at: plugIns,
-               includingPropertiesForKeys: nil
-           ),
-           let appex = contents.first(where: { $0.pathExtension == "appex" }),
-           let identifier = Bundle(url: appex)?.bundleIdentifier {
-            return identifier
-        }
-        return (Bundle.main.bundleIdentifier ?? "com.example.spamblock") + ".CallDirectory"
+    /// Always nil inside the extension itself — an extension has no plug-ins to
+    /// enumerate — so only the app should consult it.
+    static let embeddedExtensionIdentifier: String? = {
+        guard let plugIns = Bundle.main.builtInPlugInsURL,
+              let contents = try? FileManager.default.contentsOfDirectory(
+                  at: plugIns,
+                  includingPropertiesForKeys: nil
+              ),
+              let appex = contents.first(where: { $0.pathExtension == "appex" })
+        else { return nil }
+        return Bundle(url: appex)?.bundleIdentifier
     }()
+
+    /// Whether this copy of the app actually shipped with its extension.
+    static var isExtensionEmbedded: Bool { embeddedExtensionIdentifier != nil }
+
+    /// The identifier `CXCallDirectoryManager` is addressed with.
+    ///
+    /// Falls back to the conventional name when nothing is embedded, so calls
+    /// still return a meaningful CallKit error instead of being skipped.
+    static var callDirectoryExtensionIdentifier: String {
+        embeddedExtensionIdentifier
+            ?? (Bundle.main.bundleIdentifier ?? "com.example.spamblock") + ".CallDirectory"
+    }
 
     /// App Group container both targets read and write the rule list through.
     static let appGroupIdentifier = "group.com.example.spamblock"
