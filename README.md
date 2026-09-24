@@ -152,10 +152,9 @@ needs its own. SpamBlock uses **five**: the app plus four parts. Signing
 expires weekly, and re-signing re-registers them, so that's five of your ten
 every week, ongoing — leaving five for everything else you sideload.
 
-Verified on a real iPhone: all four parts load and switch on, and the contacts
-exemption runs on the device. What can't be watched directly is a blocked call
-itself — iOS rejects it before it rings and leaves nothing in Recents, so the
-evidence that it's working is the spam stopping.
+Verified on a real iPhone: all four parts load and switch on, the contacts
+exemption runs on the device, and real 909 calls were blocked — they didn't
+ring, and Recents lists them as **"SpamBlock: Blocked"**.
 
 ## Changing the list
 
@@ -230,6 +229,11 @@ extension, despite the wording. Fewer numbers per part fixes it.
 block list** in the app and wait for it to finish. A list that's installed but
 never loaded blocks nothing.
 
+**A 909 call rang through.** Either it's one of your contacts, which are
+spared on purpose, or you've called that number recently — iOS 26 won't block a
+number you've called. Delete your outgoing call to it from Recents and the next
+one is blocked.
+
 **Someone I know in the blocked area code got rejected.** Either Contacts
 permission is off, or they were added after the list was last built. Check the
 Contacts row in the app, then tap **Update block list**.
@@ -260,8 +264,15 @@ and whether they came from the App Group or the built-in list.
 ## Limitations
 
 - **US and Canada only.** The expansion assumes +1 numbers.
-- **Blocked calls are gone.** They don't ring, don't appear in Recents, and you
-  aren't told they happened. What the caller hears depends on your carrier.
+- **Blocked calls still show up in Recents.** They don't ring or notify you,
+  but iOS 26 lists them as "SpamBlock: Blocked". Apps get no say over that.
+  Turning on **Filter Unknown Callers** (Settings › Apps › Phone) should move
+  them into the Unknown Callers list behind the filter button, since every call
+  SpamBlock blocks is from a number not in your contacts. What the caller hears
+  depends on your carrier.
+- **iOS 26 won't block a number you've recently called.** Apple confirmed this
+  is deliberate: a recent outgoing call takes precedence over any blocking app.
+  Delete your call to that number from Recents and blocking applies again.
 - **Spoofing still wins sometimes.** Blocking an area code stops spam that
   advertises that area code. It does nothing about a spammer who spoofs a
   number in *your* area code — and blocking your own would take your real calls
