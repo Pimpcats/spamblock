@@ -249,8 +249,9 @@ extension NumberPlan {
 /// Apple publishes no limit.
 ///
 /// On the iPhone this was built against, one extension accepted 100,000 and
-/// rejected 3,960,000 and 7,920,000, each time with Settings reporting only
-/// "the data provided was invalid". The first guess here was that a whole area
+/// 1,980,000, and rejected 3,960,000 and 7,920,000 — each rejection reported by
+/// Settings only as "the data provided was invalid". The real ceiling sits
+/// somewhere in between; 1,980,000 is the largest size seen to load. The first guess here was that a whole area
 /// code would fit; it did not, by a wide margin. These bands are per extension,
 /// because that is where the limit applies — a larger list is split across
 /// several (see `NumberPlan.slices`).

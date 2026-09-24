@@ -36,7 +36,7 @@ invalid"** — which sounds like a bug and isn't. Measured on a real iPhone:
 | One extension holding | Result |
 | --- | --- |
 | 100,000 | loads |
-| 1,980,000 | being tested |
+| 1,980,000 | loads — this is what SpamBlock uses |
 | 3,960,000 | rejected |
 | 7,920,000 (a whole area code) | rejected |
 
@@ -152,10 +152,10 @@ needs its own. SpamBlock uses **five**: the app plus four parts. Signing
 expires weekly, and re-signing re-registers them, so that's five of your ten
 every week, ongoing — leaving five for everything else you sideload.
 
-I have not verified the whole thing end to end on a device. What's verified:
-everything compiles and the tests pass on a real Xcode toolchain; CI checks
-all four parts are present and correctly numbered in every `.ipa`; and one
-extension has been confirmed on a real iPhone to load and block.
+Verified on a real iPhone: all four parts load and switch on, and the contacts
+exemption runs on the device. What can't be watched directly is a blocked call
+itself — iOS rejects it before it rings and leaves nothing in Recents, so the
+evidence that it's working is the spam stopping.
 
 ## Changing the list
 
