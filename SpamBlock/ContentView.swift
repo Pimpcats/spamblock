@@ -1,3 +1,4 @@
+import Contacts
 import SwiftUI
 import UIKit
 
@@ -57,6 +58,24 @@ struct ContentView: View {
                 directory.refreshStatus()
                 contacts.refresh(against: list.plan)
                 knownSpam.refresh()
+            }
+            // Contacts edited while SpamBlock is open.
+            .onReceive(NotificationCenter.default.publisher(for: .CNContactStoreDidChange)) { _ in
+                contacts.refresh(against: list.plan)
+            }
+            // Each fresh reading of the address book, and each change to the
+            // parts' switches, is a chance to catch the block list up with
+            // contacts added since it last loaded.
+            .onChange(of: contacts.planFingerprint) { _ in
+                applyContactChangesToParts()
+            }
+            .onChange(of: directory.status) { _ in
+                applyContactChangesToParts()
+            }
+            .onChange(of: contacts.allFingerprint) { fingerprint in
+                if let fingerprint {
+                    knownSpam.contactsDidChange(fingerprint: fingerprint)
+                }
             }
         }
     }
@@ -314,6 +333,16 @@ struct ContentView: View {
                     Image(systemName: "person.crop.circle.badge.checkmark")
                         .foregroundStyle(.green)
                 }
+                Button(action: updateContacts) {
+                    HStack {
+                        Text(isUpdatingContacts ? "Updating…" : "Update contacts now")
+                        Spacer()
+                        if isUpdatingContacts {
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(isUpdatingContacts)
             case .notDetermined:
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Right now every number in a blocked area code is rejected, including people in your contacts.")
@@ -334,8 +363,36 @@ struct ContentView: View {
         } header: {
             Text("Contacts")
         } footer: {
-            Text("Changes to your contacts reach the block list the next time it loads, not immediately. Tap Update block list after adding someone in a blocked area code.")
+            Text(contacts.status == .granted
+                 ? "When your contacts change, SpamBlock reloads the block list by itself the next time it's open, so people you add ring through. Update contacts now does it straight away."
+                 : "Without contacts access, SpamBlock can't tell who you know.")
         }
+    }
+
+    private var isUpdatingContacts: Bool {
+        directory.isReloading || knownSpam.isReloading
+    }
+
+    /// Reloads everything that skips contacts, so the address book as it is
+    /// now takes effect: every area-code part, and Known spam.
+    private func updateContacts() {
+        reloadParts()
+        knownSpam.reload()
+    }
+
+    /// Reloads the area-code parts when contacts in a blocked area code have
+    /// changed since they last loaded. Only with every part switched on: a
+    /// part that's off can't load, and each reload takes a while.
+    private func applyContactChangesToParts() {
+        guard let current = contacts.planFingerprint else { return }
+        guard let applied = AppliedContacts.parts else {
+            // The first reading since this existed: treat what's loaded as
+            // current rather than reloading millions of numbers on a guess.
+            AppliedContacts.parts = current
+            return
+        }
+        guard applied != current, directory.status == .enabled, !directory.isReloading else { return }
+        reloadParts()
     }
 
     // MARK: - Rules
@@ -435,8 +492,18 @@ struct ContentView: View {
     }
 
     private func applyChanges() {
+        reloadParts()
+    }
+
+    /// Every reload of the parts also re-reads contacts, so each successful
+    /// one records which contacts it included.
+    private func reloadParts() {
+        let contactsNow = contacts.planFingerprint
         directory.reload {
             list.markApplied()
+            if let contactsNow {
+                AppliedContacts.parts = contactsNow
+            }
         }
     }
 }

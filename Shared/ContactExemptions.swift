@@ -59,6 +59,24 @@ enum ContactExemptions {
         return numbers.sorted()
     }
 
+    /// A short digest of an ascending number list, for telling whether the
+    /// contacts an extension skipped when it last loaded are still the ones in
+    /// the address book. Stable across launches, unlike Swift's `Hasher`,
+    /// which is seeded afresh in every process. (FNV-1a over each number's
+    /// bytes, plus the count.)
+    static func fingerprint(of numbers: [Int64]) -> String {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for number in numbers {
+            var bytes = UInt64(bitPattern: number)
+            for _ in 0..<8 {
+                hash ^= bytes & 0xff
+                hash = hash &* 0x0000_0100_0000_01b3
+                bytes >>= 8
+            }
+        }
+        return "\(String(hash, radix: 16))-\(numbers.count)"
+    }
+
     /// Converts a contact's phone number into the `Int64` CallKit uses, or nil
     /// if it isn't a complete North American number.
     ///

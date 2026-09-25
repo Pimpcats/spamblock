@@ -17,6 +17,13 @@ final class ContactAccessController: ObservableObject {
     @Published private(set) var status: Status = .notDetermined
     /// How many contacts the current block list would otherwise have caught.
     @Published private(set) var exemptedCount = 0
+    /// Fingerprints of the numbers the extensions skip when they load: the
+    /// contacts in a blocked area code, which the area-code parts skip, and
+    /// all contacts, which Known spam skips. Nil until the address book has
+    /// been read. Compared with `AppliedContacts` to tell when a reload is
+    /// needed for a contact to ring through.
+    @Published private(set) var planFingerprint: String?
+    @Published private(set) var allFingerprint: String?
 
     private let store = CNContactStore()
 
@@ -31,18 +38,23 @@ final class ContactAccessController: ObservableObject {
         }
 
         guard status == .granted else {
+            // The extensions can't read contacts either, so they skip none.
             exemptedCount = 0
+            planFingerprint = ContactExemptions.fingerprint(of: [])
+            allFingerprint = planFingerprint
             return
         }
 
         // Walking the address book is not instant on a large one, and this runs
         // every time the app comes to the front, so it stays off the main
-        // thread. Only the count comes back.
+        // thread. Only the count and fingerprints come back.
         Task {
             let numbers = await Task.detached(priority: .utility) {
                 ContactExemptions.sortedNumbers()
             }.value
             self.exemptedCount = plan.exemptedCount(from: numbers)
+            self.planFingerprint = ContactExemptions.fingerprint(of: numbers.filter(plan.covers))
+            self.allFingerprint = ContactExemptions.fingerprint(of: numbers)
         }
     }
 

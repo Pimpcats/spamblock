@@ -70,8 +70,10 @@ Two consequences worth knowing:
   iOS launches it in the background where no prompt can be answered. Until you
   grant it, the area code is blocked outright — contacts included — and the app
   says so on its main screen rather than letting you find out.
-- **New contacts aren't spared until the list reloads.** Add someone in a
-  blocked area code, then tap **Update block list**.
+- **New contacts are picked up automatically.** When your contacts change,
+  SpamBlock reloads the block list by itself the next time it's open, so the
+  people you add ring through. **Update contacts now** does it straight away.
+  Until one of those happens, someone you've just added is still blocked.
 
 ## Known spam
 
@@ -271,8 +273,9 @@ number you've called. Delete your outgoing call to it from Recents and the next
 one is blocked.
 
 **Someone I know in the blocked area code got rejected.** Either Contacts
-permission is off, or they were added after the list was last built. Check the
-Contacts row in the app, then tap **Update block list**.
+permission is off, or they were added after the list was last built and
+SpamBlock hasn't been opened since. Check the Contacts row in the app, then tap
+**Update contacts now**.
 
 **SpamBlock isn't in the Call Blocking & Identification list at all.** The
 extension was stripped during sideloading. Turn off "Remove app extensions" in
@@ -296,8 +299,9 @@ internet connection, since there's no saved copy yet. Connect and tap
 when offline.
 
 **A number I want to hear from is on the known-spam list.** Add it to your
-contacts. Contacts are never blocked, but it takes effect at the next reload,
-so tap **Update now** afterwards.
+contacts, then open SpamBlock. Contacts are never blocked, and SpamBlock
+reloads the list by itself when it sees one was added; **Update contacts now**
+does it on the spot.
 
 **The app stopped opening after about a week.** The free signing certificate
 expired. Sideload it again.

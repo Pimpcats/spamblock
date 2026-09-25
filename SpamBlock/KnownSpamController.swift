@@ -27,9 +27,35 @@ final class KnownSpamController: ObservableObject {
 
     private var manager: CXCallDirectoryManager { .sharedInstance }
 
+    /// The address book as last read by the app, for telling whether the
+    /// extension's last load skipped the contacts that exist now.
+    private var contactsFingerprint: String?
+
+    private var contactsChangedSinceLoad: Bool {
+        guard let current = contactsFingerprint else { return false }
+        return AppliedContacts.knownSpam != current
+    }
+
+    /// Takes each fresh reading of the address book, and reloads the list if
+    /// contacts have changed since it last loaded — the extension skips them
+    /// when it loads, so a new contact is only safe from the list after that.
+    func contactsDidChange(fingerprint: String) {
+        contactsFingerprint = fingerprint
+        guard AppliedContacts.knownSpam != nil else {
+            // The first reading since this existed: treat what's loaded as
+            // current rather than reloading on a guess.
+            AppliedContacts.knownSpam = fingerprint
+            return
+        }
+        if status == .enabled && contactsChangedSinceLoad {
+            reload(announce: false)
+        }
+    }
+
     /// Re-reads everything, and reloads the list when the extension is
-    /// switched on and its last load is out of date — so opening the app is
-    /// enough to catch up, whatever iOS did about background time.
+    /// switched on and its last load is out of date, or predates a change to
+    /// contacts — so opening the app is enough to catch up, whatever iOS did
+    /// about background time.
     func refresh() {
         loadedAt = KnownSpamRefresh.lastLoaded
         fetchInfo()
@@ -44,7 +70,7 @@ final class KnownSpamController: ObservableObject {
                 case (nil, .disabled): self.status = .disabled
                 default: self.status = .unknown
                 }
-                if self.status == .enabled && KnownSpamRefresh.isStale {
+                if self.status == .enabled && (KnownSpamRefresh.isStale || self.contactsChangedSinceLoad) {
                     self.reload(announce: false)
                 }
             }
@@ -68,6 +94,9 @@ final class KnownSpamController: ObservableObject {
                 } else {
                     KnownSpamRefresh.recordLoaded()
                     self.loadedAt = KnownSpamRefresh.lastLoaded
+                    if let fingerprint = self.contactsFingerprint {
+                        AppliedContacts.knownSpam = fingerprint
+                    }
                     if announce {
                         self.message = Message(kind: .success, text: "Known spam list updated.")
                     }

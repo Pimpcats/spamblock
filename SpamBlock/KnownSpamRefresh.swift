@@ -50,9 +50,13 @@ enum KnownSpamRefresh {
     static func run() async {
         schedule()
         guard let identifier = AppConfiguration.knownSpamExtensionIdentifier else { return }
+        // The extension skips contacts as they are when it loads, so this is
+        // also what keeps a newly added contact off the list in the background.
+        let contacts = ContactExemptions.fingerprint(of: ContactExemptions.sortedNumbers())
         do {
             try await CXCallDirectoryManager.sharedInstance.reloadExtension(withIdentifier: identifier)
             recordLoaded()
+            AppliedContacts.knownSpam = contacts
         } catch {
             // Nobody to tell in the background. The app shows the extension's
             // state and when it last loaded the next time it's opened.
