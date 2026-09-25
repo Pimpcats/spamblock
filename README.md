@@ -1,10 +1,12 @@
 # SpamBlock
 
-An iPhone app that blocks incoming calls by area code.
+An iPhone app that blocks incoming calls by area code, and numbers that
+people have repeatedly reported to the FTC as spam.
 
 Put `415` on the list and every call from area code 415 is rejected before your
 phone rings. Put `415555` on it instead and only the `(415) 555-xxxx` exchange
-is blocked. You pick how wide to cast the net, per entry.
+is blocked. You pick how wide to cast the net, per entry. On top of that, a
+[known-spam list](#known-spam) blocks reported numbers from anywhere.
 
 ## The thing to know first
 
@@ -71,6 +73,34 @@ Two consequences worth knowing:
 - **New contacts aren't spared until the list reloads.** Add someone in a
   blocked area code, then tap **Update block list**.
 
+## Known spam
+
+Area codes only catch spam from where you've told SpamBlock to look. The
+**known-spam list** catches numbers from anywhere that people keep reporting:
+every number reported to the FTC's Do Not Call registry **at least 3 times in
+the last 90 days**. The list is rebuilt daily from the FTC's complaint data by
+[spamblock-data](https://github.com/Pimpcats/spamblock-data), and published at
+`https://raw.githubusercontent.com/Pimpcats/spamblock-data/data/spam-numbers.txt`.
+
+It's a fifth extension, **SpamBlock — Known spam**, with its own switch in
+Settings. Unlike the area-code parts it isn't compiled in: it downloads the
+list itself each time iOS runs it, and keeps the last good copy for when the
+phone is offline. It downloads the list itself because the app can't hand it
+over without an App Group, which a free Apple ID doesn't get.
+
+- **It stays current on its own, mostly.** The app asks iOS for background
+  time about twice a day to reload it, and reloads it whenever it's opened and
+  the last load is more than 12 hours old. iOS decides when background time
+  actually comes, so opening the app is the dependable way to update. **Update
+  now** in the app does it immediately.
+- **The first load needs an internet connection.** After that, a reload with
+  no connection uses the saved copy.
+- **Your contacts still ring**, the same as with area codes.
+- **Reports aren't verified.** Spammers spoof numbers that belong to other
+  people, which is why one report isn't enough to make the list. A real
+  business can still end up on it if enough people report it; your contacts
+  are always spared.
+
 ## Before you build anything
 
 Building this needs a Mac, because Apple's compiler and signing tools only run
@@ -126,19 +156,22 @@ The steps:
 3. On the phone: **Settings › General › VPN & Device Management** → trust your
    developer certificate.
 4. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
-   **every** SpamBlock part, 1 of 4 through 4 of 4. Each carries a different
-   quarter of the list, so one left off is a gap.
+   **every** SpamBlock row: parts 1 of 4 through 4 of 4, which each carry a
+   different quarter of the area-code list, and **Known spam**.
 
 ### Check it actually worked
 
 In order, because each step depends on the one before:
 
-- **All four SpamBlock parts appear** in Call Blocking & Identification. None
-  means the extensions were stripped; only some means some were — the app says
-  which, and the fix is the "Register App ID" choice above.
+- **All five SpamBlock rows appear** in Call Blocking & Identification: four
+  parts and Known spam. None means the extensions were stripped; only some
+  means some were — the app says which, and the fix is the "Register App ID"
+  choice above.
 - **Each part's switch turns on without an error.** "The data provided by
   SpamBlock was invalid" on a part means it holds more than iOS will take.
-- **The app lists all four parts as On.**
+- **The app lists all four parts, and Known spam, as On.** The Known spam
+  section also shows how many numbers the list holds and when your phone last
+  loaded it.
 - **The Contacts row says how many of your contacts will still ring.** If it
   asks for permission, grant it — otherwise contacts in a blocked area code get
   rejected along with everyone else.
@@ -148,9 +181,10 @@ In order, because each step depends on the one before:
 ### The App ID cost
 
 A free Apple ID can register **10 App IDs per 7 days**, and every extension
-needs its own. SpamBlock uses **five**: the app plus four parts. Signing
-expires weekly, and re-signing re-registers them, so that's five of your ten
-every week, ongoing — leaving five for everything else you sideload.
+needs its own. SpamBlock uses **six**: the app, four parts, and Known spam.
+Signing expires weekly, and re-signing re-registers them, so that's six of
+your ten every week, ongoing — leaving four for everything else you sideload.
+A paid developer account has no such limit.
 
 Verified on a real iPhone: all four parts load and switch on, the contacts
 exemption runs on the device, and real 909 calls were blocked — they didn't
@@ -208,7 +242,9 @@ SpamBlock (app)                       CallDirectoryExtension
 | `Shared/ContactExemptions.swift` | Reads the address book so known callers aren't blocked. |
 | `Shared/ExtensionSlice.swift` | Which part of the list each copy of the extension carries. |
 | `Shared/RuleStore.swift` | The rule list in the App Group container, on a paid account. |
-| `CallDirectoryExtension/` | The extension iOS actually calls. Deliberately minimal. |
+| `Shared/KnownSpamList.swift` | Downloads, checks and saves the known-spam list, and skips contacts in it. |
+| `CallDirectoryExtension/` | The extension iOS actually calls for the area codes. Deliberately minimal. |
+| `KnownSpamExtension/` | The Known spam extension: downloads the list, falls back to its saved copy. |
 | `SpamBlock/` | SwiftUI app: edit rules, watch the entry count, trigger reloads. |
 | `Tests/` | Unit tests for the expansion — `Cmd-U` in Xcode. |
 
@@ -254,6 +290,15 @@ narrow one — six digits instead of three drops it from 7.9 million numbers to
 Apple ID. Edit `Shared/BlockedAreaCodes.swift` and rebuild — see
 [Changing the list](#changing-the-list).
 
+**Known spam says it couldn't load the list.** The first load needs an
+internet connection, since there's no saved copy yet. Connect and tap
+**Update now**. After one successful load, it falls back to the saved copy
+when offline.
+
+**A number I want to hear from is on the known-spam list.** Add it to your
+contacts. Contacts are never blocked, but it takes effect at the next reload,
+so tap **Update now** afterwards.
+
 **The app stopped opening after about a week.** The free signing certificate
 expired. Sideload it again.
 
@@ -276,6 +321,7 @@ and whether they came from the App Group or the built-in list.
 - **Spoofing still wins sometimes.** Blocking an area code stops spam that
   advertises that area code. It does nothing about a spammer who spoofs a
   number in *your* area code — and blocking your own would take your real calls
-  with it.
+  with it. The known-spam list catches numbers that are reported over and
+  over, but a spammer who uses each number only briefly stays ahead of it.
 - **Reloads are slow.** Millions of entries take real time. iOS may also reload
   the extension on its own schedule, without the app running.

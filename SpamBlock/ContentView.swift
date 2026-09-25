@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var list = BlockListViewModel()
     @StateObject private var directory = CallDirectoryController()
     @StateObject private var contacts = ContactAccessController()
+    @StateObject private var knownSpam = KnownSpamController()
     @State private var isAddingRule = false
 
     var body: some View {
@@ -20,6 +21,7 @@ struct ContentView: View {
                 statusSection
                 contactsSection
                 blockListSection
+                knownSpamSection
                 if let saveError = list.saveError {
                     Section {
                         messageRow(text: saveError, kind: .failure)
@@ -47,12 +49,14 @@ struct ContentView: View {
             .onAppear {
                 directory.refreshStatus()
                 contacts.refresh(against: list.plan)
+                knownSpam.refresh()
             }
             // Turning the extension on happens in Settings, outside the app, so
             // the switch is re-read every time the app comes back to the front.
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 directory.refreshStatus()
                 contacts.refresh(against: list.plan)
+                knownSpam.refresh()
             }
         }
     }
@@ -117,22 +121,27 @@ struct ContentView: View {
     }
 
     private func partRow(_ slice: ExtensionSlice) -> some View {
-        let state = directory.status(ofPart: slice.number)
-        return HStack {
+        HStack {
             Text("SpamBlock — \(slice.number) of \(slice.count)")
             Spacer()
-            switch state {
-            case .enabled:
-                Label("On", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-            case .disabled:
-                Label("Off", systemImage: "xmark.circle.fill")
-                    .foregroundStyle(.orange)
-            case .unknown:
-                Text("—").foregroundStyle(.secondary)
-            }
+            switchLabel(directory.status(ofPart: slice.number))
         }
         .font(.callout)
+    }
+
+    /// An extension's switch in Settings, as last reported by iOS.
+    @ViewBuilder
+    private func switchLabel(_ state: CallDirectoryController.Status) -> some View {
+        switch state {
+        case .enabled:
+            Label("On", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .disabled:
+            Label("Off", systemImage: "xmark.circle.fill")
+                .foregroundStyle(.orange)
+        case .unknown:
+            Text("—").foregroundStyle(.secondary)
+        }
     }
 
     private var statusIcon: String {
@@ -164,6 +173,72 @@ struct ContentView: View {
         case .enabled: return "iOS is using your block list."
         case .disabled: return "Switch SpamBlock on in Settings to start blocking."
         case .unknown: return "iOS hasn’t reported whether SpamBlock is switched on."
+        }
+    }
+
+    // MARK: - Known spam
+
+    /// The FTC list is a separate extension with its own switch, loaded from
+    /// a download rather than from the area codes, so it gets its own status
+    /// and its own update button rather than riding on the ones above.
+    private var knownSpamSection: some View {
+        Section {
+            if !knownSpam.isInstalled {
+                Label {
+                    Text("The Known spam extension wasn’t installed. Sideload again and keep every extension, choosing “Register App ID for Each Extension”.")
+                        .font(.callout)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+            } else {
+                HStack {
+                    Text("SpamBlock — Known spam")
+                    Spacer()
+                    switchLabel(knownSpam.status)
+                }
+                .font(.callout)
+
+                if let info = knownSpam.info {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(info.count.formatted()) numbers")
+                            .font(.body.monospacedDigit())
+                        Text("Reported to the FTC at least \(info.minReports) times in the last \(info.windowDays) days")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let loadedAt = knownSpam.loadedAt {
+                    (Text("Loaded on this iPhone ") + Text(loadedAt, format: .relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if knownSpam.status == .disabled {
+                    Button("Open call blocking settings") { directory.openSettings() }
+                }
+
+                Button {
+                    knownSpam.reload()
+                } label: {
+                    HStack {
+                        Text(knownSpam.isReloading ? "Updating…" : "Update now")
+                        Spacer()
+                        if knownSpam.isReloading {
+                            ProgressView()
+                        }
+                    }
+                }
+                .disabled(knownSpam.isReloading || knownSpam.status == .disabled)
+
+                if let message = knownSpam.message {
+                    messageRow(text: message.text, kind: message.kind)
+                }
+            }
+        } header: {
+            Text("Known spam")
+        } footer: {
+            Text("Numbers people have reported to the FTC’s Do Not Call registry, wherever they’re from. The list is rebuilt daily, and SpamBlock fetches it about once a day. People in your contacts still ring through.")
         }
     }
 

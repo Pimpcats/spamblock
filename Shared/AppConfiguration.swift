@@ -15,7 +15,8 @@ enum AppConfiguration {
         let slice: ExtensionSlice
     }
 
-    /// Every Call Directory extension inside the app, in part order.
+    /// Every Call Directory extension inside the app that carries a part of
+    /// the area-code list, in part order.
     ///
     /// Read from the bundle rather than hard-coded, because sideloading tools
     /// re-sign under your own team and rewrite bundle identifiers as they go.
@@ -24,7 +25,24 @@ enum AppConfiguration {
     /// and looks entirely normal while being unable to block a single call.
     ///
     /// Only meaningful in the app — an extension has no plug-ins of its own.
-    static let embeddedExtensions: [EmbeddedExtension] = {
+    static let embeddedExtensions: [EmbeddedExtension] = callDirectoryBundles
+        .filter { !KnownSpamList.isKnownSpamExtension(infoDictionary: $0.infoDictionary) }
+        .compactMap { bundle -> EmbeddedExtension? in
+            guard let identifier = bundle.bundleIdentifier else { return nil }
+            return EmbeddedExtension(
+                bundleIdentifier: identifier,
+                slice: ExtensionSlice(infoDictionary: bundle.infoDictionary) ?? .whole
+            )
+        }
+        .sorted { $0.slice.number < $1.slice.number }
+
+    /// The extension that blocks the known-spam list, or nil if this install
+    /// doesn't have it — a sideloader can drop it like any other.
+    static let knownSpamExtensionIdentifier: String? = callDirectoryBundles
+        .first(where: { KnownSpamList.isKnownSpamExtension(infoDictionary: $0.infoDictionary) })?.bundleIdentifier
+
+    /// Every Call Directory extension inside the app, of either kind.
+    private static let callDirectoryBundles: [Bundle] = {
         guard let plugIns = Bundle.main.builtInPlugInsURL,
               let contents = try? FileManager.default.contentsOfDirectory(
                   at: plugIns,
@@ -34,18 +52,11 @@ enum AppConfiguration {
 
         return contents
             .filter { $0.pathExtension == "appex" }
-            .compactMap { url -> EmbeddedExtension? in
-                guard let bundle = Bundle(url: url),
-                      let identifier = bundle.bundleIdentifier
-                else { return nil }
+            .compactMap { Bundle(url: $0) }
+            .filter { bundle in
                 let point = (bundle.infoDictionary?["NSExtension"] as? [String: Any])?["NSExtensionPointIdentifier"] as? String
-                guard point == "com.apple.callkit.call-directory" else { return nil }
-                return EmbeddedExtension(
-                    bundleIdentifier: identifier,
-                    slice: ExtensionSlice(infoDictionary: bundle.infoDictionary) ?? .whole
-                )
+                return point == "com.apple.callkit.call-directory"
             }
-            .sorted { $0.slice.number < $1.slice.number }
     }()
 
     static var isExtensionEmbedded: Bool { !embeddedExtensions.isEmpty }

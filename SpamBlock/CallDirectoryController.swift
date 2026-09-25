@@ -136,13 +136,14 @@ final class CallDirectoryController: ObservableObject {
     /// Names the part when there is more than one, since "switched off" or
     /// "too large" is only actionable once you know which of four it means.
     private func describe(_ error: Error, part: Part?) -> String {
-        let reason = describe(error)
+        let reason = Self.describe(error)
         guard let part, part.slice.count > 1 else { return reason }
         return "SpamBlock \(part.slice.number) of \(part.slice.count): \(reason)"
     }
 
     /// CallKit's own messages are terse and don't say what to do about it.
-    private func describe(_ error: Error) -> String {
+    /// Shared with the Known spam extension, which fails in the same ways.
+    static func describe(_ error: Error) -> String {
         let error = error as NSError
         guard error.domain == CXErrorDomainCallDirectoryManager,
               let code = CXErrorCodeCallDirectoryManagerError.Code(rawValue: error.code) else {

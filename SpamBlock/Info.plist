@@ -24,6 +24,16 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Background time to reload the Known spam extension, which downloads
+	     the day's list. See KnownSpamRefresh. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>spamblock.known-spam-refresh</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

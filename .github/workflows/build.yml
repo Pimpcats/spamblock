@@ -145,20 +145,32 @@ jobs:
           echo "expected parts: $expected"
 
           found=0
+          known_spam=0
           numbers=""
           for appex in "$app"/PlugIns/*.appex; do
             [ -d "$appex" ] || continue
             info="$appex/Info.plist"
             point=$(plist NSExtension:NSExtensionPointIdentifier "$info")
+            role=$(plist SpamBlockRole "$info")
             number=$(plist SpamBlockSliceNumber "$info")
             count=$(plist SpamBlockSliceCount "$info")
-            printf '  %-32s %-40s part %s of %s  "%s"\n' \
+            printf '  %-32s %-40s %-18s "%s"\n' \
               "$(basename "$appex")" "$(plist CFBundleIdentifier "$info")" \
-              "$number" "$count" "$(plist CFBundleDisplayName "$info")"
+              "${role:-part $number of $count}" "$(plist CFBundleDisplayName "$info")"
 
             if [ "$point" != "com.apple.callkit.call-directory" ]; then
               echo "::error::$(basename "$appex") is a '$point' extension, not a call directory"
               exit 1
+            fi
+            # The known-spam list isn't a slice of the area codes; it's
+            # counted separately and must not claim a part number.
+            if [ "$role" = "known-spam" ]; then
+              if [ -n "$number$count" ]; then
+                echo "::error::$(basename "$appex") is the known-spam extension but also claims part $number of $count"
+                exit 1
+              fi
+              known_spam=$((known_spam + 1))
+              continue
             fi
             if [ "$count" != "$expected" ]; then
               echo "::error::$(basename "$appex") says there are $count parts; the build has $expected"
@@ -179,7 +191,11 @@ jobs:
             echo "::error::part numbers are [$have], expected [$want]"
             exit 1
           fi
-          echo "OK: all $expected call directory extensions embedded, parts $want"
+          if [ "$known_spam" -ne 1 ]; then
+            echo "::error::found $known_spam known-spam extensions, expected 1"
+            exit 1
+          fi
+          echo "OK: all $expected area-code parts embedded ($want), plus the known-spam extension"
 
       - name: Upload the .ipa
         uses: actions/upload-artifact@v4

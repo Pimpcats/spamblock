@@ -26,10 +26,11 @@ settings:
     # blank and pick a team in Xcode's Signing & Capabilities tab.
     DEVELOPMENT_TEAM: ""
     # How many copies of the Call Directory extension the app ships. Each
-    # carries one part of the block list, because one extension can only hold
-    # so many numbers. Must match the CallDirectoryExtension targets below —
-    # CI checks the built .ipa. Every copy costs one of a free Apple ID's ten
-    # App IDs a week, so this is a trade between coverage and that budget.
+    # carries one part of the area-code list, because one extension can only
+    # hold so many numbers. Must match the CallDirectoryExtension targets
+    # below — CI checks the built .ipa. Every copy costs one of a free Apple
+    # ID's ten App IDs a week, so this is a trade between coverage and that
+    # budget. The Known spam extension is separate and not counted here.
     SPAMBLOCK_SLICE_COUNT: "4"
 
 targetTemplates:
@@ -75,6 +76,8 @@ targets:
         embed: true
       - target: CallDirectoryExtension4
         embed: true
+      - target: KnownSpamExtension
+        embed: true
       - sdk: CallKit.framework
       - sdk: Contacts.framework
 
@@ -108,6 +111,25 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory4
         SPAMBLOCK_SLICE_NUMBER: "4"
 
+  # Blocks numbers reported to the FTC as spam, from the list published by the
+  # spamblock-data repository. It downloads that list itself, so unlike the
+  # parts above it isn't a slice of anything: SpamBlockRole in its Info.plist
+  # tells the app which extension it is. No entitlements — it keeps its copy of
+  # the list in its own container and needs no App Group.
+  KnownSpamExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: KnownSpamExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.KnownSpam
+        INFOPLIST_FILE: KnownSpamExtension/Info.plist
+    dependencies:
+      - sdk: CallKit.framework
+      - sdk: Contacts.framework
+
   SpamBlockTests:
     type: bundle.unit-test
     platform: iOS
@@ -130,6 +152,7 @@ schemes:
         CallDirectoryExtension2: all
         CallDirectoryExtension3: all
         CallDirectoryExtension4: all
+        KnownSpamExtension: all
     run:
       config: Debug
     test:

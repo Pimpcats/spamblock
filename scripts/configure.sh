@@ -52,6 +52,7 @@ else
 	echo "Bundle identifiers now start with $new_prefix:"
 	echo "  app        $new_prefix.spamblock"
 	echo "  extension  $new_prefix.spamblock.CallDirectory"
+	echo "  known spam $new_prefix.spamblock.KnownSpam"
 	echo "  app group  group.$new_prefix.spamblock"
 fi
 
