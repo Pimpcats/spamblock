@@ -42,7 +42,13 @@ final class KnownSpamHandler: CXCallDirectoryProvider {
         if let error = loaded.downloadError {
             logger.error("Download failed, loading the saved copy: \(error.localizedDescription, privacy: .public)")
         }
+        submit(loaded, to: context)
+    }
 
+    /// Hands the numbers to CallKit and completes the request. Synchronous on
+    /// purpose: inside an async function, `completeRequest()` resolves to its
+    /// async overload, which waits on iOS for no benefit here.
+    private func submit(_ loaded: KnownSpamList.Loaded, to context: CXCallDirectoryExtensionContext) {
         // Read here for the same reason as the list: nothing can be passed in.
         let exempt = ContactExemptions.sortedNumbers()
 
