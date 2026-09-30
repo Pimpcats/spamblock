@@ -75,13 +75,19 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             | tee xcodebuild.log
 
+      # Artifacts are conveniences — the .ipa itself is published to the
+      # builds branch — so a full artifact storage quota mustn't fail a build.
+      # Private repositories get little of it, and it refills only as old
+      # artifacts expire, hence the short retention.
       - name: Upload build log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: xcodebuild-log
           path: xcodebuild.log
           if-no-files-found: ignore
+          retention-days: 5
 
   ipa:
     runs-on: macos-latest
@@ -198,11 +204,13 @@ jobs:
           echo "OK: all $expected area-code parts embedded ($want), plus the known-spam extension"
 
       - name: Upload the .ipa
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: SpamBlock-unsigned-ipa
           path: ${{ runner.temp }}/SpamBlock.ipa
           if-no-files-found: error
+          retention-days: 5
 
       # Actions artifacts live on blob storage behind a login, which makes them
       # awkward to fetch from a phone or a script. A single-commit branch keeps
@@ -232,8 +240,10 @@ jobs:
 
       - name: Upload archive log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: archive-log
           path: archive.log
           if-no-files-found: ignore
+          retention-days: 5
