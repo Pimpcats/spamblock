@@ -10,6 +10,10 @@ import SwiftUI
 struct AddRuleView: View {
 
     let existingPrefixes: Set<String>
+    /// Whether a prefix still fits in the parts alongside the current list.
+    let hasRoom: (String) -> Bool
+    /// How many whole area codes fit, for saying what the limit is.
+    let areaCodeCapacity: Int
     let onSave: (String, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -24,6 +28,13 @@ struct AddRuleView: View {
     private var validPrefix: String? {
         if case .success(let prefix) = validation { return prefix }
         return nil
+    }
+
+    /// A valid prefix there's no room for: every part is full, and iOS would
+    /// reject the whole list rather than just this addition.
+    private var isOverCapacity: Bool {
+        guard let prefix = validPrefix else { return false }
+        return !hasRoom(prefix)
     }
 
     private var validationError: RuleValidationError? {
@@ -53,6 +64,17 @@ struct AddRuleView: View {
                     }
                 }
 
+                if isOverCapacity {
+                    Section {
+                        Label(
+                            "There’s no room for that. SpamBlock holds up to \(areaCodeCapacity) whole area codes. Remove one first, or block a single exchange by adding three more digits.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(.orange)
+                        .font(.callout)
+                    }
+                }
+
                 if let prefix = validPrefix {
                     Section("Will block") {
                         LabeledContent("Numbers like", value: PrefixValidator.formatted(prefix))
@@ -77,7 +99,7 @@ struct AddRuleView: View {
                             dismiss()
                         }
                     }
-                    .disabled(validPrefix == nil)
+                    .disabled(validPrefix == nil || isOverCapacity)
                 }
             }
             .onAppear { isDigitsFocused = true }
@@ -86,5 +108,5 @@ struct AddRuleView: View {
 }
 
 #Preview {
-    AddRuleView(existingPrefixes: []) { _, _ in }
+    AddRuleView(existingPrefixes: [], hasRoom: { _ in true }, areaCodeCapacity: 3) { _, _ in }
 }

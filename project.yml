@@ -27,11 +27,13 @@ settings:
     DEVELOPMENT_TEAM: ""
     # How many copies of the Call Directory extension the app ships. Each
     # carries one part of the area-code list, because one extension can only
-    # hold so many numbers. Must match the CallDirectoryExtension targets
-    # below — CI checks the built .ipa. Every copy costs one of a free Apple
-    # ID's ten App IDs a week, so this is a trade between coverage and that
-    # budget. The Known spam extension is separate and not counted here.
-    SPAMBLOCK_SLICE_COUNT: "4"
+    # hold so many numbers: 12 parts of 1,980,000 hold three whole area codes.
+    # Must match the CallDirectoryExtension targets below — CI checks the
+    # built .ipa. Every copy needs its own App ID, which is why this build
+    # needs a paid developer account: with the app and Known spam that's 14,
+    # and a free Apple ID can register only ten a week. The Known spam
+    # extension is separate and not counted here.
+    SPAMBLOCK_SLICE_COUNT: "12"
 
 targetTemplates:
 
@@ -76,6 +78,22 @@ targets:
         embed: true
       - target: CallDirectoryExtension4
         embed: true
+      - target: CallDirectoryExtension5
+        embed: true
+      - target: CallDirectoryExtension6
+        embed: true
+      - target: CallDirectoryExtension7
+        embed: true
+      - target: CallDirectoryExtension8
+        embed: true
+      - target: CallDirectoryExtension9
+        embed: true
+      - target: CallDirectoryExtension10
+        embed: true
+      - target: CallDirectoryExtension11
+        embed: true
+      - target: CallDirectoryExtension12
+        embed: true
       - target: KnownSpamExtension
         embed: true
       - sdk: CallKit.framework
@@ -110,6 +128,62 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory4
         SPAMBLOCK_SLICE_NUMBER: "4"
+
+  CallDirectoryExtension5:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory5
+        SPAMBLOCK_SLICE_NUMBER: "5"
+
+  CallDirectoryExtension6:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory6
+        SPAMBLOCK_SLICE_NUMBER: "6"
+
+  CallDirectoryExtension7:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory7
+        SPAMBLOCK_SLICE_NUMBER: "7"
+
+  CallDirectoryExtension8:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory8
+        SPAMBLOCK_SLICE_NUMBER: "8"
+
+  CallDirectoryExtension9:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory9
+        SPAMBLOCK_SLICE_NUMBER: "9"
+
+  CallDirectoryExtension10:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory10
+        SPAMBLOCK_SLICE_NUMBER: "10"
+
+  CallDirectoryExtension11:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory11
+        SPAMBLOCK_SLICE_NUMBER: "11"
+
+  CallDirectoryExtension12:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory12
+        SPAMBLOCK_SLICE_NUMBER: "12"
 
   # Blocks numbers reported to the FTC as spam, from the list published by the
   # spamblock-data repository. It downloads that list itself, so unlike the
@@ -152,6 +226,14 @@ schemes:
         CallDirectoryExtension2: all
         CallDirectoryExtension3: all
         CallDirectoryExtension4: all
+        CallDirectoryExtension5: all
+        CallDirectoryExtension6: all
+        CallDirectoryExtension7: all
+        CallDirectoryExtension8: all
+        CallDirectoryExtension9: all
+        CallDirectoryExtension10: all
+        CallDirectoryExtension11: all
+        CallDirectoryExtension12: all
         KnownSpamExtension: all
     run:
       config: Debug

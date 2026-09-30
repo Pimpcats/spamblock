@@ -247,6 +247,19 @@ final class NumberPlanTests: XCTestCase {
         XCTAssertEqual(parts[0].last, "90939")
     }
 
+    /// Twelve parts, the build's count, hold three whole area codes at the
+    /// size one extension is known to accept — and not a number more.
+    func testTwelvePartsHoldThreeAreaCodesExactly() {
+        let three = ["213", "415", "909"]
+        XCTAssertEqual(Set(NumberPlan.slices(of: three, count: 12).map(size)), [1_980_000])
+        XCTAssertEqual(NumberPlan.largestPart(of: three, count: 12), EntryBudget.comfortable)
+        XCTAssertGreaterThan(NumberPlan.largestPart(of: three + ["818"], count: 12), EntryBudget.comfortable)
+        XCTAssertGreaterThan(NumberPlan.largestPart(of: three + ["818555"], count: 12), EntryBudget.comfortable)
+        // One area code spread over all twelve: pieces come in 100,000s (90,000
+        // where an N11 code is skipped), so an even 660,000 isn't possible.
+        XCTAssertEqual(NumberPlan.largestPart(of: ["909"], count: 12), 690_000)
+    }
+
     /// The largest part is what has to fit in one extension, so that is what
     /// the split minimises — here, better than cutting at the nearest boundary
     /// past each even share, which gives 1,680,000.

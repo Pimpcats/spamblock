@@ -12,12 +12,21 @@ final class BlockListViewModel: ObservableObject {
     private static let appliedSignatureKey = "lastAppliedPlanSignature"
 
     init() {
-        // With no App Group there is nowhere to write rules that the extension
-        // could read, so the compiled-in list is shown instead — the same list
-        // the extension is using, just not editable from here.
-        rules = store.isAvailable
-            ? store.load()
-            : BlockedAreaCodes.prefixes.map { BlockRule(prefix: $0) }
+        let builtIn = BlockedAreaCodes.prefixes.map { BlockRule(prefix: $0) }
+        if let saved = store.loadSaved() {
+            rules = saved
+        } else {
+            // With no App Group there is nowhere to write rules that the
+            // extension could read, so the compiled-in list is shown instead —
+            // the same list the extension is using, just not editable here.
+            // With one but nothing saved yet, the extensions are using the
+            // compiled-in list too, so that's where editing starts; saving it
+            // now keeps the app and the extensions reading the same thing.
+            rules = builtIn
+            if store.isAvailable {
+                try? store.save(builtIn)
+            }
+        }
         lastAppliedSignature = UserDefaults.standard.string(forKey: Self.appliedSignatureKey)
     }
 
@@ -32,12 +41,37 @@ final class BlockListViewModel: ObservableObject {
 
     /// The largest part, which is the number that has to fit in one extension.
     var largestPart: Int {
-        NumberPlan.slices(of: plan.prefixes, count: partCount)
-            .map { NumberPlan(prefixes: $0).entryCount }
-            .max() ?? 0
+        NumberPlan.largestPart(of: plan.prefixes, count: partCount)
+    }
+
+    /// Whether `prefix` still fits once added: every part within the size one
+    /// extension is known to load. Checked before adding rather than left to
+    /// iOS, which rejects an oversized part outright and says only that the
+    /// data was invalid.
+    func hasRoom(for prefix: String) -> Bool {
+        NumberPlan.largestPart(of: plan.prefixes + [prefix], count: partCount) <= EntryBudget.comfortable
+    }
+
+    /// How many whole area codes the parts can hold, for explaining the limit.
+    var areaCodeCapacity: Int {
+        partCount * EntryBudget.comfortable / NumberPlan.entryCount(for: "415")
     }
 
     var budgetLevel: EntryBudget.Level { EntryBudget.level(for: largestPart) }
+
+    /// After a reload that started at `start`, whether every part read the
+    /// list saved here, going by the reports they leave in the shared
+    /// container. Nil when there's no container to check through.
+    func partsReadCurrentList(since start: Date) -> Bool? {
+        guard store.isAvailable else { return nil }
+        let expected = plan.prefixes
+        // A little slack: the report is stamped by another process.
+        let earliest = start.addingTimeInterval(-5)
+        return (1...max(partCount, 1)).allSatisfy { part in
+            guard let report = store.loadReport(part: part) else { return false }
+            return report.prefixes == expected && report.loadedAt >= earliest
+        }
+    }
     var existingPrefixes: Set<String> { Set(rules.map(\.prefix)) }
 
     /// Whether rules edited here can reach the extension at all.

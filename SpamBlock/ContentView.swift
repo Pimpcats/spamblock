@@ -43,7 +43,11 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $isAddingRule) {
-                AddRuleView(existingPrefixes: list.existingPrefixes) { prefix, note in
+                AddRuleView(
+                    existingPrefixes: list.existingPrefixes,
+                    hasRoom: { list.hasRoom(for: $0) },
+                    areaCodeCapacity: list.areaCodeCapacity
+                ) { prefix, note in
                     list.add(prefix: prefix, note: note)
                 }
             }
@@ -454,7 +458,7 @@ struct ContentView: View {
     private var compiledInListSection: some View {
         Section {
             Label {
-                Text("This list is built into the app. Editing it here isn’t possible on a free Apple ID — change Shared/BlockedAreaCodes.swift, push, and reinstall the new build.")
+                Text("This list is built into the app, because this install has no App Group for the app to save changes to. To change it, edit Shared/BlockedAreaCodes.swift, push, and reinstall the new build.")
                     .font(.callout)
             } icon: {
                 Image(systemName: "lock.fill").foregroundStyle(.secondary)
@@ -499,10 +503,20 @@ struct ContentView: View {
     /// one records which contacts it included.
     private func reloadParts() {
         let contactsNow = contacts.planFingerprint
+        let started = Date()
         directory.reload {
             list.markApplied()
             if let contactsNow {
                 AppliedContacts.parts = contactsNow
+            }
+            // iOS reporting success means each part loaded something, not
+            // that it was this list: a part reading a different App Group
+            // than the app would load the built-in list instead.
+            if list.partsReadCurrentList(since: started) == false {
+                directory.message = CallDirectoryController.Message(
+                    kind: .failure,
+                    text: "Every part loaded, but not all of them read the list saved here, so some may still be blocking an older list."
+                )
             }
         }
     }

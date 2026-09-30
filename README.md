@@ -42,16 +42,16 @@ invalid"** — which sounds like a bug and isn't. Measured on a real iPhone:
 | 3,960,000 | rejected |
 | 7,920,000 (a whole area code) | rejected |
 
-So SpamBlock ships **four copies of its extension**, each carrying a quarter of
-the list. They show up in Settings as **SpamBlock — 1 of 4** through **4 of 4**,
-each with its own switch. Commercial blockers do the same thing for the same
-reason: YouMail appears as "1 of 2" and "2 of 2".
+So SpamBlock ships **twelve copies of its extension**, each carrying a
+twelfth of the list. They show up in Settings as **SpamBlock — 1 of 12**
+through **12 of 12**, each with its own switch. Commercial blockers do the same
+thing for the same reason: YouMail appears as "1 of 2" and "2 of 2".
 
-A whole area code fills all four, so **one area code is the practical limit**
-on a free Apple ID. Blocking more would mean more copies, and each one costs a
-weekly App ID (see below). To block pieces of several area codes instead,
-narrow them to the exchanges that actually call you — six digits instead of
-three.
+Twelve parts of 1,980,000 hold **three whole area codes**, and the app won't
+let you add past that: iOS would reject the whole list rather than just the
+extra. To cover pieces of more area codes instead, narrow them to the
+exchanges that actually call you — six digits instead of three is 10,000
+numbers rather than 7.9 million.
 
 Android doesn't have this problem: its `CallScreeningService` blocks an area
 code with a three-digit prefix check and no list at all.
@@ -147,7 +147,7 @@ for Each Extension)**. The alternatives both fail silently:
   then never registers it: it's in the app, but there's still no SpamBlock row
   and no toggle in Settings.
 
-Registering a separate App ID costs one more of a free account's ten per week.
+Each extension registers its own App ID — see [the App ID cost](#the-app-id-cost).
 In Sideloadly, the equivalent is simply leaving "Remove app extensions" off.
 
 The steps:
@@ -158,52 +158,65 @@ The steps:
 3. On the phone: **Settings › General › VPN & Device Management** → trust your
    developer certificate.
 4. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
-   **every** SpamBlock row: parts 1 of 4 through 4 of 4, which each carry a
-   different quarter of the area-code list, and **Known spam**.
+   **every** SpamBlock row: parts 1 of 12 through 12 of 12, which each carry a
+   different twelfth of the area-code list, and **Known spam**.
 
 ### Check it actually worked
 
 In order, because each step depends on the one before:
 
-- **All five SpamBlock rows appear** in Call Blocking & Identification: four
-  parts and Known spam. None means the extensions were stripped; only some
-  means some were — the app says which, and the fix is the "Register App ID"
-  choice above.
+- **All thirteen SpamBlock rows appear** in Call Blocking & Identification:
+  twelve parts and Known spam. None means the extensions were stripped; only
+  some means some were — the app says which, and the fix is the "Register App
+  ID" choice above.
 - **Each part's switch turns on without an error.** "The data provided by
   SpamBlock was invalid" on a part means it holds more than iOS will take.
-- **The app lists all four parts, and Known spam, as On.** The Known spam
+- **The app lists all twelve parts, and Known spam, as On.** The Known spam
   section also shows how many numbers the list holds and when your phone last
   loaded it.
 - **The Contacts row says how many of your contacts will still ring.** If it
   asks for permission, grant it — otherwise contacts in a blocked area code get
   rejected along with everyone else.
 - **Tap "Update block list"** and wait while it loads each part in turn. A
-  failure names the part and the reason in plain language.
+  failure names the part and the reason in plain language. If the parts load
+  but didn't read the list saved in the app, it says that too.
 
 ### The App ID cost
 
-A free Apple ID can register **10 App IDs per 7 days**, and every extension
-needs its own. SpamBlock uses **six**: the app, four parts, and Known spam.
-Signing expires weekly, and re-signing re-registers them, so that's six of
-your ten every week, ongoing — leaving four for everything else you sideload.
-A paid developer account has no such limit.
+Every extension needs its own App ID, so SpamBlock uses **fourteen**: the
+app, twelve parts, and Known spam. That needs a **paid developer account**,
+which has no weekly limit and signs apps for a year. A free Apple ID can
+register only **10 App IDs per 7 days**, so this build won't install with
+one; a free account needs a build with four parts, which holds one area code.
 
-Verified on a real iPhone: all four parts load and switch on, the contacts
-exemption runs on the device, and real 909 calls were blocked — they didn't
-ring, and Recents lists them as **"SpamBlock: Blocked"**.
+Verified on a real iPhone, with the earlier four-part build: every part loads
+and switches on, the contacts exemption runs on the device, and real 909 calls
+were blocked — they didn't ring, and Recents lists them as **"SpamBlock:
+Blocked"**.
 
 ## Changing the list
 
-Because your rules are compiled in, changing them means a rebuild:
+**In the app**, when the app and its extensions share an App Group: tap **+**,
+type an area code (or a longer prefix), then **Update block list**. Switch
+area codes off and on, or swipe to delete them. The first time, the list
+starts from the one built into the app.
+
+The App Group has to be provisioned for this, which a paid account does.
+Sideloaders rename it under your own team; SpamBlock looks up the new name
+that SideStore and AltStore record in the app, so editing works through them
+too. After each reload, every part leaves a note of the list it read, and the
+app warns if any of them didn't read the one it saved.
+
+**Without an App Group** the list is compiled in, and changing it means a
+rebuild:
 
 1. Edit `Shared/BlockedAreaCodes.swift` — on github.com the pencil icon is
    enough, no computer needed.
 2. Commit. The build starts on its own.
 3. Download the new `.ipa` and sideload it over the old one.
 
-The app itself shows you what's currently blocked and the entry count, but its
-editing controls are hidden when the list is compiled in, because nothing typed
-there could reach the extension.
+The app still shows what's blocked and the entry count, with its editing
+controls hidden, because nothing typed there could reach the extensions.
 
 ## If you do get hold of a Mac
 
@@ -289,9 +302,14 @@ same cause and same fix as above.
 narrow one — six digits instead of three drops it from 7.9 million numbers to
 10,000.
 
-**The app says the list is built in and can't be edited.** Expected on a free
-Apple ID. Edit `Shared/BlockedAreaCodes.swift` and rebuild — see
-[Changing the list](#changing-the-list).
+**The app says the list is built in and can't be edited.** This install has
+no App Group the app can open. Expected on a free Apple ID; with a paid one,
+reinstall and keep app extensions. Or edit `Shared/BlockedAreaCodes.swift` and
+rebuild — see [Changing the list](#changing-the-list).
+
+**"Not all of them read the list saved here."** The parts loaded, but some
+read a different App Group than the app, so they're still blocking the
+built-in list. Reinstall, choosing **Register App ID for Each Extension**.
 
 **Known spam says it couldn't load the list.** The first load needs an
 internet connection, since there's no saved copy yet. Connect and tap

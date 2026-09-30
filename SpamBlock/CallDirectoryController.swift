@@ -134,7 +134,7 @@ final class CallDirectoryController: ObservableObject {
     }
 
     /// Names the part when there is more than one, since "switched off" or
-    /// "too large" is only actionable once you know which of four it means.
+    /// "too large" is only actionable once you know which part it means.
     private func describe(_ error: Error, part: Part?) -> String {
         let reason = Self.describe(error)
         guard let part, part.slice.count > 1 else { return reason }

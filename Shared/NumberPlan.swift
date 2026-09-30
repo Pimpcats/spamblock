@@ -243,6 +243,12 @@ extension NumberPlan {
         }
         return parts
     }
+
+    /// How many numbers the largest of `count` parts would hold — the figure
+    /// that has to fit in one extension.
+    static func largestPart(of prefixes: [String], count: Int) -> Int {
+        slices(of: prefixes, count: count).map { NumberPlan(prefixes: $0).entryCount }.max() ?? 0
+    }
 }
 
 /// How many numbers one Call Directory extension can load — measured, since

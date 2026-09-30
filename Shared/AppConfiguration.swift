@@ -75,4 +75,33 @@ enum AppConfiguration {
 
     /// App Group container both targets read and write the rule list through.
     static let appGroupIdentifier = "group.com.example.spamblock"
+
+    /// The App Group this install can actually open, or nil if none.
+    ///
+    /// Signed as built, that's `appGroupIdentifier`. Sideloaders sign under
+    /// your own team and rename app groups to keep them unique, recording the
+    /// new names under `ALTAppGroups` in the app's Info.plist — SideStore and
+    /// AltStore both do — so those are tried first. An extension reads the
+    /// containing app's Info.plist, two folders up from its own bundle, so the
+    /// app and every extension settle on the same group.
+    static let resolvedAppGroupIdentifier: String? = appGroupCandidates(
+        appInfo: containingAppBundle?.infoDictionary ?? Bundle.main.infoDictionary,
+        ownInfo: Bundle.main.infoDictionary
+    ).first { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil }
+
+    /// Groups to try, in order: the sideloader's renamed ones as the app
+    /// records them, then any in this bundle's own Info.plist, then the one
+    /// built in. Each name once.
+    static func appGroupCandidates(appInfo: [String: Any]?, ownInfo: [String: Any]?) -> [String] {
+        let renamed = [appInfo, ownInfo].flatMap { ($0?["ALTAppGroups"] as? [String]) ?? [] }
+        var seen = Set<String>()
+        return (renamed + [appGroupIdentifier]).filter { seen.insert($0).inserted }
+    }
+
+    /// From inside an extension, the app that contains it; nil in the app.
+    private static var containingAppBundle: Bundle? {
+        let url = Bundle.main.bundleURL
+        guard url.pathExtension == "appex" else { return nil }
+        return Bundle(url: url.deletingLastPathComponent().deletingLastPathComponent())
+    }
 }

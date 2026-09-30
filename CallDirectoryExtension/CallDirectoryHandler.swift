@@ -20,19 +20,18 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
     override func beginRequest(with context: CXCallDirectoryExtensionContext) {
         context.delegate = self
 
-        // The compiled-in list is the normal source on a free Apple ID, which
-        // can't provision an App Group — see Shared/BlockedAreaCodes.swift.
+        // The list saved in the App Group when there is one, otherwise the
+        // compiled-in list — the only source when no App Group is provisioned.
+        // See Shared/BlockedAreaCodes.swift.
         //
-        // Falling back on an *empty* result, not just an absent container: a
-        // sideloader can leave the App Group entitlement in place so a
-        // container exists while the rules file inside it never does. Keying
-        // off availability alone then yields an empty plan, and the extension
-        // submits nothing at all while looking like it worked.
+        // Falling back when nothing was ever saved, not just when there's no
+        // container: a sideloader can leave the App Group entitlement in place
+        // so a container exists while the rules file inside it never does. A
+        // list that was saved empty, though, is someone clearing it on
+        // purpose, and blocks nothing.
         let store = RuleStore.shared
-        let stored = store.isAvailable ? store.load() : []
-        let listed = stored.isEmpty
-            ? BlockedAreaCodes.prefixes
-            : stored.filter(\.isEnabled).map(\.prefix)
+        let saved = store.loadSaved()
+        let listed = saved.map { $0.filter(\.isEnabled).map(\.prefix) } ?? BlockedAreaCodes.prefixes
 
         // One extension can't hold a whole area code, so several copies of this
         // one each carry a part of the list. They all compute the same split and
@@ -46,12 +45,28 @@ final class CallDirectoryHandler: CXCallDirectoryProvider {
         // the app says so plainly rather than leaving it to be discovered.
         let exempt = ContactExemptions.sortedNumbers()
 
-        let source = stored.isEmpty ? "built-in list" : "app group"
+        let exempted = plan.exemptedCount(from: exempt)
+        let source = saved == nil ? "built-in list" : "app group"
         logger.log("""
             Part \(slice.number) of \(slice.count): loading \(plan.entryCount) entries \
             from \(source, privacy: .public), \
-            exempting \(plan.exemptedCount(from: exempt)) of \(exempt.count) contacts
+            exempting \(exempted) of \(exempt.count) contacts
             """)
+
+        // Tells the app which list this part read, through the same container
+        // it read from; see RuleStore.PartReport.
+        if store.isAvailable {
+            let report = RuleStore.PartReport(
+                prefixes: NumberPlan(prefixes: listed).prefixes,
+                entries: plan.entryCount - exempted,
+                loadedAt: Date()
+            )
+            do {
+                try store.saveReport(report, part: slice.number)
+            } catch {
+                logger.error("Couldn’t save the load report: \(error.localizedDescription, privacy: .public)")
+            }
+        }
 
         // On an incremental request iOS keeps what was supplied last time, so
         // the previous entries have to be cleared before the current list is
