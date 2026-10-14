@@ -65,6 +65,35 @@ final class RuleStoreTests: XCTestCase {
         XCTAssertEqual(fromApp, ["group.app", AppConfiguration.appGroupIdentifier])
     }
 
+    func testReadsTheGroupsAProvisioningProfileGrants() {
+        // The property list sits inside a signed envelope of binary data.
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict>
+            <key>Name</key><string>SideStore profile</string>
+            <key>Entitlements</key><dict>
+                <key>com.apple.security.application-groups</key>
+                <array><string>group.com.example.spamblock.ABCDE12345</string></array>
+            </dict>
+        </dict></plist>
+        """
+        var profile = Data([0x30, 0x82, 0x1f, 0x00, 0xa0, 0x80])
+        profile.append(Data(plist.utf8))
+        profile.append(Data([0x00, 0x31, 0x82, 0x02]))
+        XCTAssertEqual(AppConfiguration.provisionedAppGroups(fromProfile: profile),
+                       ["group.com.example.spamblock.ABCDE12345"])
+        XCTAssertEqual(AppConfiguration.provisionedAppGroups(fromProfile: Data([0x30, 0x82])), [])
+    }
+
+    func testProvisionedGroupsComeBeforeTheBuiltInOne() {
+        XCTAssertEqual(
+            AppConfiguration.appGroupCandidates(appInfo: nil, ownInfo: nil,
+                                                provisioned: ["group.renamed", "group.renamed"]),
+            ["group.renamed", AppConfiguration.appGroupIdentifier]
+        )
+    }
+
     func testSignedAsBuiltOnlyTheBuiltInGroupIsTried() {
         XCTAssertEqual(
             AppConfiguration.appGroupCandidates(appInfo: [:], ownInfo: nil),

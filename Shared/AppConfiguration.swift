@@ -79,23 +79,59 @@ enum AppConfiguration {
     /// The App Group this install can actually open, or nil if none.
     ///
     /// Signed as built, that's `appGroupIdentifier`. Sideloaders sign under
-    /// your own team and rename app groups to keep them unique, recording the
-    /// new names under `ALTAppGroups` in the app's Info.plist — SideStore and
-    /// AltStore both do — so those are tried first. An extension reads the
-    /// containing app's Info.plist, two folders up from its own bundle, so the
-    /// app and every extension settle on the same group.
+    /// your own team and rename app groups to keep them unique, so their names
+    /// are found two ways: under `ALTAppGroups`, where SideStore and AltStore
+    /// record them in the app's Info.plist, and in the provisioning profile
+    /// the signer embeds, which lists the groups the signature grants. An
+    /// extension reads the containing app's copies as well as its own, two
+    /// folders up from its own bundle, so the app and every extension settle
+    /// on the same group.
     static let resolvedAppGroupIdentifier: String? = appGroupCandidates(
         appInfo: containingAppBundle?.infoDictionary ?? Bundle.main.infoDictionary,
-        ownInfo: Bundle.main.infoDictionary
+        ownInfo: Bundle.main.infoDictionary,
+        provisioned: provisionedAppGroups(in: containingAppBundle ?? Bundle.main)
+            + provisionedAppGroups(in: Bundle.main)
     ).first { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil }
 
     /// Groups to try, in order: the sideloader's renamed ones as the app
-    /// records them, then any in this bundle's own Info.plist, then the one
-    /// built in. Each name once.
-    static func appGroupCandidates(appInfo: [String: Any]?, ownInfo: [String: Any]?) -> [String] {
+    /// records them, then any in this bundle's own Info.plist, then those the
+    /// embedded provisioning profiles grant, then the one built in. Each name
+    /// once.
+    static func appGroupCandidates(
+        appInfo: [String: Any]?,
+        ownInfo: [String: Any]?,
+        provisioned: [String] = []
+    ) -> [String] {
         let renamed = [appInfo, ownInfo].flatMap { ($0?["ALTAppGroups"] as? [String]) ?? [] }
         var seen = Set<String>()
-        return (renamed + [appGroupIdentifier]).filter { seen.insert($0).inserted }
+        return (renamed + provisioned + [appGroupIdentifier]).filter { seen.insert($0).inserted }
+    }
+
+    /// App groups granted by the provisioning profile inside `bundle`.
+    ///
+    /// Sideloaded and development builds carry the profile they were signed
+    /// with (App Store builds don't, and don't need it). Empty when there's no
+    /// profile or it grants no groups.
+    static func provisionedAppGroups(in bundle: Bundle) -> [String] {
+        guard let url = bundle.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url)
+        else { return [] }
+        return provisionedAppGroups(fromProfile: data)
+    }
+
+    /// A profile is a signed envelope around a property list, and the list
+    /// can be read without unwrapping the signature.
+    static func provisionedAppGroups(fromProfile data: Data) -> [String] {
+        guard let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: data.subdata(in: start.lowerBound..<end.upperBound),
+                  format: nil
+              ) as? [String: Any],
+              let entitlements = plist["Entitlements"] as? [String: Any],
+              let groups = entitlements["com.apple.security.application-groups"] as? [String]
+        else { return [] }
+        return groups
     }
 
     /// From inside an extension, the app that contains it; nil in the app.

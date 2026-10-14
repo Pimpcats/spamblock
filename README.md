@@ -201,10 +201,11 @@ type an area code (or a longer prefix), then **Update block list**. Switch
 area codes off and on, or swipe to delete them. The first time, the list
 starts from the one built into the app.
 
-The App Group has to be provisioned for this, which a paid account does.
-Sideloaders rename it under your own team; SpamBlock looks up the new name
-that SideStore and AltStore record in the app, so editing works through them
-too. After each reload, every part leaves a note of the list it read, and the
+The App Group has to be provisioned for this, which a paid account does. The
+build asks for it in its signature (an ad-hoc one, which the sideloader
+replaces with yours), so SideStore and AltStore set it up when they install.
+They rename it under your own team; SpamBlock finds the new name in the app's
+provisioning profile, or where SideStore and AltStore record it. After each reload, every part leaves a note of the list it read, and the
 app warns if any of them didn't read the one it saved.
 
 **Without an App Group** the list is compiled in, and changing it means a
