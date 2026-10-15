@@ -27,13 +27,13 @@ settings:
     DEVELOPMENT_TEAM: ""
     # How many copies of the Call Directory extension the app ships. Each
     # carries one part of the area-code list, because one extension can only
-    # hold so many numbers: 12 parts of 1,980,000 hold three whole area codes.
+    # hold so many numbers: 20 parts of 1,980,000 hold five whole area codes.
     # Must match the CallDirectoryExtension targets below — CI checks the
     # built .ipa. Every copy needs its own App ID, which is why this build
-    # needs a paid developer account: with the app and Known spam that's 14,
+    # needs a paid developer account: with the app and Known spam that's 22,
     # and a free Apple ID can register only ten a week. The Known spam
     # extension is separate and not counted here.
-    SPAMBLOCK_SLICE_COUNT: "12"
+    SPAMBLOCK_SLICE_COUNT: "20"
 
 targetTemplates:
 
@@ -93,6 +93,22 @@ targets:
       - target: CallDirectoryExtension11
         embed: true
       - target: CallDirectoryExtension12
+        embed: true
+      - target: CallDirectoryExtension13
+        embed: true
+      - target: CallDirectoryExtension14
+        embed: true
+      - target: CallDirectoryExtension15
+        embed: true
+      - target: CallDirectoryExtension16
+        embed: true
+      - target: CallDirectoryExtension17
+        embed: true
+      - target: CallDirectoryExtension18
+        embed: true
+      - target: CallDirectoryExtension19
+        embed: true
+      - target: CallDirectoryExtension20
         embed: true
       - target: KnownSpamExtension
         embed: true
@@ -185,6 +201,62 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory12
         SPAMBLOCK_SLICE_NUMBER: "12"
 
+  CallDirectoryExtension13:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory13
+        SPAMBLOCK_SLICE_NUMBER: "13"
+
+  CallDirectoryExtension14:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory14
+        SPAMBLOCK_SLICE_NUMBER: "14"
+
+  CallDirectoryExtension15:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory15
+        SPAMBLOCK_SLICE_NUMBER: "15"
+
+  CallDirectoryExtension16:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory16
+        SPAMBLOCK_SLICE_NUMBER: "16"
+
+  CallDirectoryExtension17:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory17
+        SPAMBLOCK_SLICE_NUMBER: "17"
+
+  CallDirectoryExtension18:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory18
+        SPAMBLOCK_SLICE_NUMBER: "18"
+
+  CallDirectoryExtension19:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory19
+        SPAMBLOCK_SLICE_NUMBER: "19"
+
+  CallDirectoryExtension20:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory20
+        SPAMBLOCK_SLICE_NUMBER: "20"
+
   # Blocks numbers reported to the FTC as spam, from the list published by the
   # spamblock-data repository. It downloads that list itself, so unlike the
   # parts above it isn't a slice of anything: SpamBlockRole in its Info.plist
@@ -234,6 +306,14 @@ schemes:
         CallDirectoryExtension10: all
         CallDirectoryExtension11: all
         CallDirectoryExtension12: all
+        CallDirectoryExtension13: all
+        CallDirectoryExtension14: all
+        CallDirectoryExtension15: all
+        CallDirectoryExtension16: all
+        CallDirectoryExtension17: all
+        CallDirectoryExtension18: all
+        CallDirectoryExtension19: all
+        CallDirectoryExtension20: all
         KnownSpamExtension: all
     run:
       config: Debug

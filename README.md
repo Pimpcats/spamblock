@@ -42,14 +42,16 @@ invalid"** — which sounds like a bug and isn't. Measured on a real iPhone:
 | 3,960,000 | rejected |
 | 7,920,000 (a whole area code) | rejected |
 
-So SpamBlock ships **twelve copies of its extension**, each carrying a
-twelfth of the list. They show up in Settings as **SpamBlock — 1 of 12**
-through **12 of 12**, each with its own switch. Commercial blockers do the same
+So SpamBlock ships **twenty copies of its extension**, each carrying a
+twentieth of the list. They show up in Settings as **SpamBlock — 1 of 20**
+through **20 of 20**, each with its own switch. Commercial blockers do the same
 thing for the same reason: YouMail appears as "1 of 2" and "2 of 2".
 
-Twelve parts of 1,980,000 hold **three whole area codes**, and the app won't
+Twenty parts of 1,980,000 hold **five whole area codes**, and the app won't
 let you add past that: iOS would reject the whole list rather than just the
-extra. To cover pieces of more area codes instead, narrow them to the
+extra. The size of each part is measured; five area codes at once — 39.6
+million numbers across all twenty — is more than has been tried on a phone
+yet. To cover pieces of more area codes instead, narrow them to the
 exchanges that actually call you — six digits instead of three is 10,000
 numbers rather than 7.9 million.
 
@@ -158,20 +160,25 @@ The steps:
 3. On the phone: **Settings › General › VPN & Device Management** → trust your
    developer certificate.
 4. **Settings › Apps › Phone › Call Blocking & Identification** → switch on
-   **every** SpamBlock row: parts 1 of 12 through 12 of 12, which each carry a
-   different twelfth of the area-code list, and **Known spam**.
+   **every** SpamBlock row: parts 1 of 20 through 20 of 20, which each carry a
+   different twentieth of the area-code list, and **Known spam**.
+
+**Updating from a build with fewer parts**, like the earlier twelve-part one:
+install over it the same way, switch on the new parts in Settings, then open
+the app and tap **Update block list**. It shows Pending until you do, because
+the parts already on the phone still hold the list split the old way.
 
 ### Check it actually worked
 
 In order, because each step depends on the one before:
 
-- **All thirteen SpamBlock rows appear** in Call Blocking & Identification:
-  twelve parts and Known spam. None means the extensions were stripped; only
+- **All twenty-one SpamBlock rows appear** in Call Blocking & Identification:
+  twenty parts and Known spam. None means the extensions were stripped; only
   some means some were — the app says which, and the fix is the "Register App
   ID" choice above.
 - **Each part's switch turns on without an error.** "The data provided by
   SpamBlock was invalid" on a part means it holds more than iOS will take.
-- **The app lists all twelve parts, and Known spam, as On.** The Known spam
+- **The app lists all twenty parts, and Known spam, as On.** The Known spam
   section also shows how many numbers the list holds and when your phone last
   loaded it.
 - **The Contacts row says how many of your contacts will still ring.** If it
@@ -183,8 +190,8 @@ In order, because each step depends on the one before:
 
 ### The App ID cost
 
-Every extension needs its own App ID, so SpamBlock uses **fourteen**: the
-app, twelve parts, and Known spam. That needs a **paid developer account**,
+Every extension needs its own App ID, so SpamBlock uses **twenty-two**: the
+app, twenty parts, and Known spam. That needs a **paid developer account**,
 which has no weekly limit and signs apps for a year. A free Apple ID can
 register only **10 App IDs per 7 days**, so this build won't install with
 one; a free account needs a build with four parts, which holds one area code.

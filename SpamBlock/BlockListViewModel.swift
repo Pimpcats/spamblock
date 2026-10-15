@@ -91,8 +91,13 @@ final class BlockListViewModel: ObservableObject {
     /// Identifies the *effective* block list, so toggling a rule off and back
     /// on, or adding one already covered by a broader rule, doesn't ask for a
     /// pointless multi-million-entry reload.
+    ///
+    /// The part count is included because a build with more parts splits the
+    /// same list differently: the parts already on the phone hold the old
+    /// split until they reload, the new ones duplicate part of it, and nothing
+    /// would say so.
     private var signature: String {
-        plan.prefixes.joined(separator: ",")
+        "\(partCount) parts: " + plan.prefixes.joined(separator: ",")
     }
 
     func add(prefix: String, note: String) {

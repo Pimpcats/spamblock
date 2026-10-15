@@ -108,5 +108,5 @@ struct AddRuleView: View {
 }
 
 #Preview {
-    AddRuleView(existingPrefixes: [], hasRoom: { _ in true }, areaCodeCapacity: 3) { _, _ in }
+    AddRuleView(existingPrefixes: [], hasRoom: { _ in true }, areaCodeCapacity: 5) { _, _ in }
 }
