@@ -1,7 +1,7 @@
 # XcodeGen manifest — `scripts/bootstrap.sh` turns this into SpamBlock.xcodeproj.
 #
 # The bundle identifiers here must match Shared/AppConfiguration.swift and the
-# two .entitlements files. `scripts/configure.sh <your-prefix>` rewrites all of
+# .entitlements files. `scripts/configure.sh <your-prefix>` rewrites all of
 # them together.
 name: SpamBlock
 
@@ -260,8 +260,9 @@ targets:
   # Blocks numbers reported to the FTC as spam, from the list published by the
   # spamblock-data repository. It downloads that list itself, so unlike the
   # parts above it isn't a slice of anything: SpamBlockRole in its Info.plist
-  # tells the app which extension it is. No entitlements — it keeps its copy of
-  # the list in its own container and needs no App Group.
+  # tells the app which extension it is. It keeps its copy of the list in its
+  # own container; the App Group is for the numbers reported from the app,
+  # and without one it simply loads the list alone.
   KnownSpamExtension:
     type: app-extension
     platform: iOS
@@ -272,6 +273,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.KnownSpam
         INFOPLIST_FILE: KnownSpamExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: KnownSpamExtension/KnownSpamExtension.entitlements
     dependencies:
       - sdk: CallKit.framework
       - sdk: Contacts.framework
@@ -282,6 +284,9 @@ targets:
     sources:
       - path: Shared
       - path: Tests
+      # The one app file with logic worth testing on its own: what a report
+      # looks like when it's filed on GitHub.
+      - path: SpamBlock/GitHubReports.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.tests

@@ -2,7 +2,7 @@ import Foundation
 
 /// Identifiers that the app and the Call Directory extension have to agree on.
 ///
-/// These three strings are duplicated in `project.yml` and in the two
+/// These three strings are duplicated in `project.yml` and in the
 /// `.entitlements` files. `scripts/configure.sh` rewrites all of them together —
 /// prefer it over editing by hand, because a mismatch between any two of them
 /// fails silently at runtime (the extension loads, finds no rules, and blocks

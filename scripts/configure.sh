@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rewrites the bundle identifier prefix across every file that has to agree on
-# it: AppConfiguration.swift, project.yml, and both .entitlements files.
+# it: AppConfiguration.swift, project.yml, and the .entitlements files.
 #
 #     scripts/configure.sh com.yourname [TEAMID]
 #
@@ -40,6 +40,7 @@ else
 		project.yml
 		SpamBlock/SpamBlock.entitlements
 		CallDirectoryExtension/CallDirectoryExtension.entitlements
+		KnownSpamExtension/KnownSpamExtension.entitlements
 	)
 
 	# -i.bak works on both BSD sed (macOS) and GNU sed.

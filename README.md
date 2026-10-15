@@ -105,6 +105,38 @@ over without an App Group, which a free Apple ID doesn't get.
   business can still end up on it if enough people report it; your contacts
   are always spared.
 
+## Reporting a number that got through
+
+When a spam call gets through anyway, report it:
+
+1. In **Phone › Recents**, tap ⓘ next to the call, touch and hold the number,
+   and choose **Copy**.
+2. In SpamBlock, under **Your reports**, tap **Report a number**, then
+   **Paste** and **Report**.
+
+The number is blocked on your iPhone straight away. The Known spam extension
+blocks your reports along with the published list, reading them from the App
+Group, so **SpamBlock — Known spam** has to be switched on. Swipe left on a
+report to take it back.
+
+**The shared list.** Connect SpamBlock to GitHub and each report is also filed
+as an issue on [spamblock-data](https://github.com/Pimpcats/spamblock-data),
+whose workflow adds the number to the published list within minutes. Every
+install then blocks it, and it outlives reinstalling the app. Only reports
+filed by the repository's owner count, since anyone can open an issue there.
+To connect, tap **Shared list** and follow the steps: make a fine-grained
+token on github.com with access to `spamblock-data` only and **Issues** set to
+**Read and write**, then paste it in. SpamBlock keeps it in the iPhone's
+Keychain. Taking a report back closes its issue, which takes the number off
+the shared list too.
+
+Copy and paste because iOS doesn't let apps read the call log. iOS does have
+a swipe-to-report action in Recents for apps with a reporting extension, but
+that extension can't pass the number to the app, and sending it anywhere else
+needs a server on a domain Apple has verified for the app, which a sideloaded
+build can't set up. iOS's own **Block this Caller** (Recents › ⓘ) blocks a
+number on the phone too, without reaching the shared list.
+
 ## Before you build anything
 
 Building this needs a Mac, because Apple's compiler and signing tools only run
@@ -265,10 +297,12 @@ SpamBlock (app)                       CallDirectoryExtension
 | `Shared/ContactExemptions.swift` | Reads the address book so known callers aren't blocked. |
 | `Shared/ExtensionSlice.swift` | Which part of the list each copy of the extension carries. |
 | `Shared/RuleStore.swift` | The rule list in the App Group container, on a paid account. |
-| `Shared/KnownSpamList.swift` | Downloads, checks and saves the known-spam list, and skips contacts in it. |
+| `Shared/KnownSpamList.swift` | Downloads, checks and saves the known-spam list, adds your reports, and skips contacts in it. |
+| `Shared/SpamReport.swift` | A number reported from the app, as kept in the App Group. |
 | `CallDirectoryExtension/` | The extension iOS actually calls for the area codes. Deliberately minimal. |
-| `KnownSpamExtension/` | The Known spam extension: downloads the list, falls back to its saved copy. |
-| `SpamBlock/` | SwiftUI app: edit rules, watch the entry count, trigger reloads. |
+| `KnownSpamExtension/` | The Known spam extension: downloads the list, falls back to its saved copy, blocks your reports. |
+| `SpamBlock/` | SwiftUI app: edit rules, watch the entry count, trigger reloads, report numbers. |
+| `SpamBlock/GitHubReports.swift` | Files reports as issues on spamblock-data, and closes them when taken back. |
 | `Tests/` | Unit tests for the expansion — `Cmd-U` in Xcode. |
 
 CallKit rejects a directory whose entries are out of order or repeated, and

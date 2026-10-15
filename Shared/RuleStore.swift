@@ -12,7 +12,8 @@ enum RuleStoreError: LocalizedError {
 }
 
 /// The rule list, stored in the App Group container shared by the app and the
-/// extensions, along with what each part last loaded.
+/// extensions, along with what each part last loaded and the numbers reported
+/// from the app.
 ///
 /// A file rather than shared `UserDefaults`: the extension is launched by the
 /// system as a separate short-lived process, and reading a file gives a clear
@@ -83,5 +84,21 @@ struct RuleStore {
     func loadReport(part: Int) -> PartReport? {
         guard let url = reportURL(part: part), let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(PartReport.self, from: data)
+    }
+
+    // MARK: - Reported numbers
+
+    /// Written by the app, read by the Known spam extension, which blocks
+    /// them along with the published list.
+    private var spamReportsURL: URL? { directory?.appendingPathComponent("spam-reports.json") }
+
+    func loadSpamReports() -> [SpamReport] {
+        guard let url = spamReportsURL, let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([SpamReport].self, from: data)) ?? []
+    }
+
+    func saveSpamReports(_ reports: [SpamReport]) throws {
+        guard let url = spamReportsURL else { throw RuleStoreError.appGroupUnavailable }
+        try JSONEncoder().encode(reports).write(to: url, options: .atomic)
     }
 }

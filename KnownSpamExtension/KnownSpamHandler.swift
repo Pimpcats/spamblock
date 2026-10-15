@@ -3,14 +3,16 @@ import Foundation
 import os
 
 /// The "SpamBlock — Known spam" extension: blocks numbers reported to the FTC
-/// as spam, from the list the spamblock-data repository publishes.
+/// as spam, from the list the spamblock-data repository publishes, and the
+/// numbers reported from the app.
 ///
 /// Unlike the area-code parts, the list isn't known when the app is built, so
 /// this downloads it every time iOS runs it — when the app asks for a reload,
 /// after a restart, when it's switched on — and falls back to the last copy
-/// that downloaded cleanly. It downloads the list itself because the app can't
-/// hand it over: that would need an App Group, which a free Apple ID can't
-/// provision.
+/// that downloaded cleanly. It downloads the list itself rather than have the
+/// app hand it over, so it works without an App Group too; with one, it also
+/// reads the numbers reported from the app, which block here straight away
+/// rather than once they reach the published list.
 final class KnownSpamHandler: CXCallDirectoryProvider {
 
     private let logger = Logger(
@@ -42,15 +44,18 @@ final class KnownSpamHandler: CXCallDirectoryProvider {
         if let error = loaded.downloadError {
             logger.error("Download failed, loading the saved copy: \(error.localizedDescription, privacy: .public)")
         }
-        submit(loaded, to: context)
+        let reported = SpamReport.blocked(RuleStore.shared.loadSpamReports())
+        submit(loaded, reported: reported, to: context)
     }
 
     /// Hands the numbers to CallKit and completes the request. Synchronous on
     /// purpose: inside an async function, `completeRequest()` resolves to its
     /// async overload, which waits on iOS for no benefit here.
-    private func submit(_ loaded: KnownSpamList.Loaded, to context: CXCallDirectoryExtensionContext) {
+    private func submit(_ loaded: KnownSpamList.Loaded, reported: [Int64],
+                        to context: CXCallDirectoryExtensionContext) {
         // Read here for the same reason as the list: nothing can be passed in.
         let exempt = ContactExemptions.sortedNumbers()
+        let numbers = KnownSpamList.merging(loaded.numbers, with: reported)
 
         // On an incremental request iOS keeps the previous entries, so they're
         // cleared first; on a full one there are none and clearing is an error.
@@ -58,14 +63,14 @@ final class KnownSpamHandler: CXCallDirectoryProvider {
             context.removeAllBlockingEntries()
         }
 
-        let skipped = KnownSpamList.forEachEntry(in: loaded.numbers, exempt: exempt) { number in
+        let skipped = KnownSpamList.forEachEntry(in: numbers, exempt: exempt) { number in
             context.addBlockingEntry(withNextSequentialPhoneNumber: number)
         }
 
         let source = loaded.source == .downloaded ? "download" : "saved copy"
         logger.log("""
-            Loading \(loaded.numbers.count - skipped) known-spam numbers \
-            from the \(source, privacy: .public), \
+            Loading \(numbers.count - skipped) known-spam numbers \
+            from the \(source, privacy: .public) and \(reported.count) reports, \
             skipping \(skipped) in contacts
             """)
         context.completeRequest()

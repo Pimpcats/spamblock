@@ -125,21 +125,21 @@ jobs:
       # stuck at the built-in one. An ad-hoc signature carries the
       # entitlements without needing a certificate; the sideloader replaces
       # it with your own when it installs. Extensions first, then the app,
-      # whose signature covers them.
+      # whose signature covers them. Known spam asks for the App Group too, to
+      # read the numbers reported in the app.
       - name: Sign ad hoc with the entitlements
         run: |
           app="$RUNNER_TEMP/SpamBlock.xcarchive/Products/Applications/SpamBlock.app"
-          sign() { codesign --force --sign - --timestamp=none "$@"; }
+          sign() { codesign --force --sign - --timestamp=none --generate-entitlement-der "$@"; }
           for appex in "$app"/PlugIns/*.appex; do
             role=$(/usr/libexec/PlistBuddy -c "Print :SpamBlockRole" "$appex/Info.plist" 2>/dev/null || true)
             if [ "$role" = "known-spam" ]; then
-              sign "$appex"   # keeps its own copy of the list; asks for nothing
+              sign --entitlements KnownSpamExtension/KnownSpamExtension.entitlements "$appex"
             else
-              sign --generate-entitlement-der \
-                --entitlements CallDirectoryExtension/CallDirectoryExtension.entitlements "$appex"
+              sign --entitlements CallDirectoryExtension/CallDirectoryExtension.entitlements "$appex"
             fi
           done
-          sign --generate-entitlement-der --entitlements SpamBlock/SpamBlock.entitlements "$app"
+          sign --entitlements SpamBlock/SpamBlock.entitlements "$app"
 
       - name: Wrap as an unsigned .ipa
         run: |
@@ -226,18 +226,17 @@ jobs:
           fi
           echo "OK: all $expected area-code parts embedded ($want), plus the known-spam extension"
 
-          # The app and every area-code part must ask for the shared App
-          # Group, or a sideloader won't set it up; see the signing step.
+          # The app and every extension must ask for the shared App Group, or
+          # a sideloader won't set it up; see the signing step.
           group=$(/usr/libexec/PlistBuddy -c "Print :com.apple.security.application-groups:0" \
             "$GITHUB_WORKSPACE/SpamBlock/SpamBlock.entitlements")
           for bundle in "$app" "$app"/PlugIns/*.appex; do
-            [ "$(plist SpamBlockRole "$bundle/Info.plist")" = "known-spam" ] && continue
             if ! codesign -d --entitlements - "$bundle" 2>&1 | grep -q "$group"; then
               echo "::error::$(basename "$bundle") doesn't ask for the App Group $group"
               exit 1
             fi
           done
-          echo "OK: the app and every area-code part ask for $group"
+          echo "OK: the app and every extension ask for $group"
 
       - name: Upload the .ipa
         continue-on-error: true

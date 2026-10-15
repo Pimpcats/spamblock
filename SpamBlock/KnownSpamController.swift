@@ -22,6 +22,10 @@ final class KnownSpamController: ObservableObject {
     @Published private(set) var info: KnownSpamList.Info?
     @Published var message: Message?
 
+    /// A reload asked for while one was under way, which may have started too
+    /// early to include what prompted it — a number reported a moment ago.
+    private var isReloadQueued = false
+
     let identifier = AppConfiguration.knownSpamExtensionIdentifier
     var isInstalled: Bool { identifier != nil }
 
@@ -102,7 +106,22 @@ final class KnownSpamController: ObservableObject {
                     }
                 }
                 self.fetchInfo()
+                if self.isReloadQueued {
+                    self.isReloadQueued = false
+                    self.reload(announce: false)
+                }
             }
+        }
+    }
+
+    /// Reloads so the extension reads the reports as they are now: straight
+    /// away, or after the reload under way, which may have read them before
+    /// the latest change.
+    func reloadForReports() {
+        if isReloading {
+            isReloadQueued = true
+        } else {
+            reload(announce: false)
         }
     }
 

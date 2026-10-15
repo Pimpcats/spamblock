@@ -8,7 +8,15 @@ struct ContentView: View {
     @StateObject private var directory = CallDirectoryController()
     @StateObject private var contacts = ContactAccessController()
     @StateObject private var knownSpam = KnownSpamController()
-    @State private var isAddingRule = false
+    @StateObject private var reports = SpamReportsController()
+    @State private var sheet: Sheet?
+
+    /// One sheet modifier for all of them: SwiftUI presents only one of
+    /// several attached to the same view.
+    private enum Sheet: Identifiable {
+        case addAreaCode, report, sharedList
+        var id: Self { self }
+    }
 
     var body: some View {
         NavigationStack {
@@ -23,6 +31,7 @@ struct ContentView: View {
                 contactsSection
                 blockListSection
                 knownSpamSection
+                if knownSpam.isInstalled && reports.isAvailable { reportsSection }
                 if let saveError = list.saveError {
                     Section {
                         messageRow(text: saveError, kind: .failure)
@@ -35,26 +44,40 @@ struct ContentView: View {
                 if list.isEditable {
                     ToolbarItem(placement: .primaryAction) {
                         Button {
-                            isAddingRule = true
+                            sheet = .addAreaCode
                         } label: {
                             Label("Add area code", systemImage: "plus")
                         }
                     }
                 }
             }
-            .sheet(isPresented: $isAddingRule) {
-                AddRuleView(
-                    existingPrefixes: list.existingPrefixes,
-                    hasRoom: { list.hasRoom(for: $0) },
-                    areaCodeCapacity: list.areaCodeCapacity
-                ) { prefix, note in
-                    list.add(prefix: prefix, note: note)
+            .sheet(item: $sheet) { sheet in
+                switch sheet {
+                case .addAreaCode:
+                    AddRuleView(
+                        existingPrefixes: list.existingPrefixes,
+                        hasRoom: { list.hasRoom(for: $0) },
+                        areaCodeCapacity: list.areaCodeCapacity
+                    ) { prefix, note in
+                        list.add(prefix: prefix, note: note)
+                    }
+                case .report:
+                    ReportNumberView(isReported: { reports.isReported($0) }) { number in
+                        report(number)
+                    }
+                case .sharedList:
+                    SharedListView(
+                        hasToken: reports.hasToken,
+                        onSave: { reports.setToken($0) },
+                        onRemove: { reports.removeToken() }
+                    )
                 }
             }
             .onAppear {
                 directory.refreshStatus()
                 contacts.refresh(against: list.plan)
                 knownSpam.refresh()
+                reports.fileWhenPossible()
             }
             // Turning the extension on happens in Settings, outside the app, so
             // the switch is re-read every time the app comes back to the front.
@@ -62,6 +85,7 @@ struct ContentView: View {
                 directory.refreshStatus()
                 contacts.refresh(against: list.plan)
                 knownSpam.refresh()
+                reports.fileWhenPossible()
             }
             // Contacts edited while SpamBlock is open.
             .onReceive(NotificationCenter.default.publisher(for: .CNContactStoreDidChange)) { _ in
@@ -225,7 +249,8 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(info.count.formatted()) numbers")
                             .font(.body.monospacedDigit())
-                        Text("Reported to the FTC at least \(info.minReports) times in the last \(info.windowDays) days")
+                        Text("Reported to the FTC at least \(info.minReports) times in the last \(info.windowDays) days"
+                             + (info.reportedNumbers > 0 ? ", plus \(info.reportedNumbers.formatted()) reported in SpamBlock" : ""))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -262,6 +287,68 @@ struct ContentView: View {
             Text("Known spam")
         } footer: {
             Text("Numbers people have reported to the FTC’s Do Not Call registry, wherever they’re from. The list is rebuilt daily, and SpamBlock fetches it about once a day. People in your contacts still ring through.")
+        }
+    }
+
+    // MARK: - Your reports
+
+    /// Numbers reported after a call got through. The Known spam extension
+    /// blocks them, so each change reloads it, and they're only blocked while
+    /// its switch is on.
+    private var reportsSection: some View {
+        Section {
+            Button {
+                sheet = .report
+            } label: {
+                Label("Report a number", systemImage: "exclamationmark.bubble")
+            }
+
+            if knownSpam.status == .disabled {
+                Text("Switch on SpamBlock — Known spam in Settings, or reported numbers won’t be blocked.")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+
+            ForEach(reports.current) { report in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(report.formatted)
+                        .font(.body.monospacedDigit())
+                    (Text(report.reportedAt, format: .dateTime.month().day()) + Text(" · \(reports.status(of: report))"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onDelete { offsets in
+                for report in offsets.map({ reports.current[$0] }) {
+                    reports.withdraw(report)
+                }
+                knownSpam.reloadForReports()
+            }
+
+            Button {
+                sheet = .sharedList
+            } label: {
+                HStack {
+                    Text("Shared list")
+                    Spacer()
+                    Text(reports.hasToken ? "Connected" : "Not connected")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let problem = reports.problem {
+                messageRow(text: problem, kind: .failure)
+            }
+        } header: {
+            Text("Your reports")
+        } footer: {
+            Text("When a spam call gets through, report the number here. It’s blocked on this iPhone straight away, and with the shared list connected it joins the known-spam list for every SpamBlock. Swipe left to take a report back.")
+        }
+    }
+
+    private func report(_ number: Int64) {
+        if reports.report(number) {
+            knownSpam.reloadForReports()
         }
     }
 

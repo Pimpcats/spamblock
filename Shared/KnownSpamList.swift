@@ -8,7 +8,8 @@ import Foundation
 /// from Do Not Call complaints and downloaded. The "SpamBlock — Known spam"
 /// extension fetches it itself — the app can't hand data to an extension
 /// without an App Group, which a free Apple ID can't provision — and keeps
-/// the last good copy for loading offline.
+/// the last good copy for loading offline. Where there is an App Group, the
+/// extension also blocks the numbers reported from the app (`SpamReport`).
 enum KnownSpamList {
 
     /// One 10-digit number per line, ascending. Rebuilt from FTC complaint
@@ -106,6 +107,30 @@ enum KnownSpamList {
     }
 
     // MARK: - Blocking
+
+    /// `published` with `reported` added, ascending and without duplicates as
+    /// CallKit requires. `published` comes from `parse`, already in order;
+    /// `reported` can be in any order. One pass, since `published` can be
+    /// hundreds of thousands of numbers in an extension short on memory.
+    static func merging(_ published: [Int64], with reported: [Int64]) -> [Int64] {
+        let extra = Set(reported).sorted()
+        guard !extra.isEmpty else { return published }
+        var merged: [Int64] = []
+        merged.reserveCapacity(published.count + extra.count)
+        var next = 0
+        for number in published {
+            while next < extra.count && extra[next] < number {
+                merged.append(extra[next])
+                next += 1
+            }
+            if next < extra.count && extra[next] == number {
+                next += 1
+            }
+            merged.append(number)
+        }
+        merged.append(contentsOf: extra[next...])
+        return merged
+    }
 
     /// Calls `body` with each of `numbers` that isn't in `exempt`, in order,
     /// and returns how many were skipped. Both must be ascending — the same
@@ -215,19 +240,24 @@ enum KnownSpamList {
         let minReports: Int
         let windowDays: Int
         let generatedAt: Date?
+        /// How many of `count` were reported from the SpamBlock app rather
+        /// than to the FTC. Zero in lists built before reports existed.
+        let reportedNumbers: Int
 
         enum CodingKeys: String, CodingKey {
             case count
             case minReports = "min_reports"
             case windowDays = "window_days"
             case generatedAt = "generated_at"
+            case reportedNumbers = "reported_numbers"
         }
 
-        init(count: Int, minReports: Int, windowDays: Int, generatedAt: Date?) {
+        init(count: Int, minReports: Int, windowDays: Int, generatedAt: Date?, reportedNumbers: Int = 0) {
             self.count = count
             self.minReports = minReports
             self.windowDays = windowDays
             self.generatedAt = generatedAt
+            self.reportedNumbers = reportedNumbers
         }
 
         init(from decoder: Decoder) throws {
@@ -237,6 +267,7 @@ enum KnownSpamList {
             windowDays = try container.decode(Int.self, forKey: .windowDays)
             generatedAt = try container.decodeIfPresent(String.self, forKey: .generatedAt)
                 .flatMap(Self.date(from:))
+            reportedNumbers = try container.decodeIfPresent(Int.self, forKey: .reportedNumbers) ?? 0
         }
 
         /// UTC, written with or without a trailing Z.
