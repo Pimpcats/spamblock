@@ -16,11 +16,11 @@ import Foundation
 //      "415555"      just the (415) 555 exchange       10,000 numbers
 //      "4155550134"  one specific number                    1 number
 //
-//  The list is split evenly across the app's extensions — twenty of them,
-//  showing in Settings as "SpamBlock — 1 of 20" through "20 of 20" — because
+//  The list is split evenly across the app's extensions — thirty-two of them,
+//  showing in Settings as "SpamBlock — 1 of 32" through "32 of 32" — because
 //  one extension can only hold so much. Each part holds about 2 million, so
-//  five whole area codes (7.9 million each) fill all twenty. The app shows
-//  the per-part size, and README.md explains the limit.
+//  eight whole area codes (7.9 million each) fill all thirty-two. The app
+//  shows the per-part size, and README.md explains the limit.
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum BlockedAreaCodes {

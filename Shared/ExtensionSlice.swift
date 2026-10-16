@@ -4,7 +4,7 @@ import Foundation
 ///
 /// One extension can only hold so many numbers, so the app ships several
 /// identical extensions and the list is split between them — the arrangement
-/// Settings shows as "SpamBlock — 1 of 20", "2 of 20", and so on. Each extension
+/// Settings shows as "SpamBlock — 1 of 32", "2 of 32", and so on. Each extension
 /// learns its position from its own Info.plist, where the build writes
 /// `SpamBlockSliceNumber` and `SpamBlockSliceCount`. Those survive re-signing,
 /// unlike bundle identifiers, which sideloading tools rewrite.

@@ -124,9 +124,17 @@ struct ContentView: View {
             .padding(.vertical, 4)
 
             // Each part has its own switch in Settings, and a part left off is
-            // a gap in the list, so they're listed rather than summarised.
+            // a gap in the list, so every part that's off is named. The rest
+            // are counted in one row: a row each, for dozens of parts, would
+            // push everything else off the screen.
             if directory.parts.count > 1 {
-                ForEach(directory.parts, id: \.slice.number) { part in
+                HStack {
+                    Text("Parts switched on")
+                    Spacer()
+                    partsOnLabel
+                }
+                ForEach(directory.parts.filter { directory.status(ofPart: $0.slice.number) == .disabled },
+                        id: \.slice.number) { part in
                     partRow(part.slice)
                 }
             }
@@ -157,6 +165,20 @@ struct ContentView: View {
             Text(directory.parts.count > 1
                  ? "Every SpamBlock part has to be switched on under Settings › Apps › Phone › Call Blocking & Identification. Each carries a different slice of the list, so one left off is a gap."
                  : "iOS only blocks calls once SpamBlock is switched on under Settings › Apps › Phone › Call Blocking & Identification, and only after the list has been loaded.")
+        }
+    }
+
+    /// "29 of 32", or a dash until iOS has answered for any part.
+    @ViewBuilder
+    private var partsOnLabel: some View {
+        let states = directory.parts.map { directory.status(ofPart: $0.slice.number) }
+        if states.allSatisfy({ $0 == .unknown }) {
+            Text("—").foregroundStyle(.secondary)
+        } else {
+            let on = states.filter { $0 == .enabled }.count
+            Text("\(on) of \(states.count)")
+                .monospacedDigit()
+                .foregroundStyle(on == states.count ? Color.green : Color.orange)
         }
     }
 

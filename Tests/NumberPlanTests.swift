@@ -247,17 +247,17 @@ final class NumberPlanTests: XCTestCase {
         XCTAssertEqual(parts[0].last, "90939")
     }
 
-    /// Twenty parts, the build's count, hold five whole area codes at the
-    /// size one extension is known to accept — and not a number more.
-    func testTwentyPartsHoldFiveAreaCodesExactly() {
-        let five = ["213", "310", "415", "818", "909"]
-        XCTAssertEqual(Set(NumberPlan.slices(of: five, count: 20).map(size)), [1_980_000])
-        XCTAssertEqual(NumberPlan.largestPart(of: five, count: 20), EntryBudget.comfortable)
-        XCTAssertGreaterThan(NumberPlan.largestPart(of: five + ["951"], count: 20), EntryBudget.comfortable)
-        XCTAssertGreaterThan(NumberPlan.largestPart(of: five + ["951555"], count: 20), EntryBudget.comfortable)
-        // One area code spread over all twenty: pieces come in 100,000s (90,000
-        // where an N11 code is skipped), so an even 396,000 isn't possible.
-        XCTAssertEqual(NumberPlan.largestPart(of: ["909"], count: 20), 400_000)
+    /// Thirty-two parts, the build's count, hold eight whole area codes at
+    /// the size one extension is known to accept — and not a number more.
+    func testThirtyTwoPartsHoldEightAreaCodesExactly() {
+        let eight = ["213", "310", "415", "626", "714", "818", "909", "951"]
+        XCTAssertEqual(Set(NumberPlan.slices(of: eight, count: 32).map(size)), [1_980_000])
+        XCTAssertEqual(NumberPlan.largestPart(of: eight, count: 32), EntryBudget.comfortable)
+        XCTAssertGreaterThan(NumberPlan.largestPart(of: eight + ["760"], count: 32), EntryBudget.comfortable)
+        XCTAssertGreaterThan(NumberPlan.largestPart(of: eight + ["760555"], count: 32), EntryBudget.comfortable)
+        // One area code spread over all thirty-two: pieces come in 100,000s
+        // (90,000 where an N11 code is skipped), so an even 247,500 isn't possible.
+        XCTAssertEqual(NumberPlan.largestPart(of: ["909"], count: 32), 300_000)
     }
 
     /// The largest part is what has to fit in one extension, so that is what

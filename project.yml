@@ -27,13 +27,13 @@ settings:
     DEVELOPMENT_TEAM: ""
     # How many copies of the Call Directory extension the app ships. Each
     # carries one part of the area-code list, because one extension can only
-    # hold so many numbers: 20 parts of 1,980,000 hold five whole area codes.
+    # hold so many numbers: 32 parts of 1,980,000 hold eight whole area codes.
     # Must match the CallDirectoryExtension targets below — CI checks the
     # built .ipa. Every copy needs its own App ID, which is why this build
-    # needs a paid developer account: with the app and Known spam that's 22,
+    # needs a paid developer account: with the app and Known spam that's 34,
     # and a free Apple ID can register only ten a week. The Known spam
     # extension is separate and not counted here.
-    SPAMBLOCK_SLICE_COUNT: "20"
+    SPAMBLOCK_SLICE_COUNT: "32"
 
 targetTemplates:
 
@@ -109,6 +109,30 @@ targets:
       - target: CallDirectoryExtension19
         embed: true
       - target: CallDirectoryExtension20
+        embed: true
+      - target: CallDirectoryExtension21
+        embed: true
+      - target: CallDirectoryExtension22
+        embed: true
+      - target: CallDirectoryExtension23
+        embed: true
+      - target: CallDirectoryExtension24
+        embed: true
+      - target: CallDirectoryExtension25
+        embed: true
+      - target: CallDirectoryExtension26
+        embed: true
+      - target: CallDirectoryExtension27
+        embed: true
+      - target: CallDirectoryExtension28
+        embed: true
+      - target: CallDirectoryExtension29
+        embed: true
+      - target: CallDirectoryExtension30
+        embed: true
+      - target: CallDirectoryExtension31
+        embed: true
+      - target: CallDirectoryExtension32
         embed: true
       - target: KnownSpamExtension
         embed: true
@@ -257,6 +281,90 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory20
         SPAMBLOCK_SLICE_NUMBER: "20"
 
+  CallDirectoryExtension21:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory21
+        SPAMBLOCK_SLICE_NUMBER: "21"
+
+  CallDirectoryExtension22:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory22
+        SPAMBLOCK_SLICE_NUMBER: "22"
+
+  CallDirectoryExtension23:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory23
+        SPAMBLOCK_SLICE_NUMBER: "23"
+
+  CallDirectoryExtension24:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory24
+        SPAMBLOCK_SLICE_NUMBER: "24"
+
+  CallDirectoryExtension25:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory25
+        SPAMBLOCK_SLICE_NUMBER: "25"
+
+  CallDirectoryExtension26:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory26
+        SPAMBLOCK_SLICE_NUMBER: "26"
+
+  CallDirectoryExtension27:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory27
+        SPAMBLOCK_SLICE_NUMBER: "27"
+
+  CallDirectoryExtension28:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory28
+        SPAMBLOCK_SLICE_NUMBER: "28"
+
+  CallDirectoryExtension29:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory29
+        SPAMBLOCK_SLICE_NUMBER: "29"
+
+  CallDirectoryExtension30:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory30
+        SPAMBLOCK_SLICE_NUMBER: "30"
+
+  CallDirectoryExtension31:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory31
+        SPAMBLOCK_SLICE_NUMBER: "31"
+
+  CallDirectoryExtension32:
+    templates: [CallDirectory]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.spamblock.CallDirectory32
+        SPAMBLOCK_SLICE_NUMBER: "32"
+
   # Blocks numbers reported to the FTC as spam, from the list published by the
   # spamblock-data repository. It downloads that list itself, so unlike the
   # parts above it isn't a slice of anything: SpamBlockRole in its Info.plist
@@ -319,6 +427,18 @@ schemes:
         CallDirectoryExtension18: all
         CallDirectoryExtension19: all
         CallDirectoryExtension20: all
+        CallDirectoryExtension21: all
+        CallDirectoryExtension22: all
+        CallDirectoryExtension23: all
+        CallDirectoryExtension24: all
+        CallDirectoryExtension25: all
+        CallDirectoryExtension26: all
+        CallDirectoryExtension27: all
+        CallDirectoryExtension28: all
+        CallDirectoryExtension29: all
+        CallDirectoryExtension30: all
+        CallDirectoryExtension31: all
+        CallDirectoryExtension32: all
         KnownSpamExtension: all
     run:
       config: Debug

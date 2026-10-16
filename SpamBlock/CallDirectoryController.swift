@@ -1,6 +1,7 @@
 import CallKit
 import Combine
 import Foundation
+import UIKit
 
 /// Talks to `CXCallDirectoryManager`: whether each part of the extension is
 /// switched on in Settings, and asking iOS to reload them after a change.
@@ -80,9 +81,14 @@ final class CallDirectoryController: ObservableObject {
     /// and iOS gives the phone only so much memory for all of them together.
     /// Carries on past a failure so the other parts still update, then reports
     /// the first failure along with which part it came from.
+    ///
+    /// The screen stays on meanwhile. With dozens of parts this takes
+    /// minutes, and if the phone locks, the app is suspended and the next
+    /// part doesn't start until it's opened again.
     func reload(onSuccess: @escaping () -> Void) {
         guard !isReloading, !parts.isEmpty else { return }
         message = nil
+        UIApplication.shared.isIdleTimerDisabled = true
         reload(at: 0, failures: [], onSuccess: onSuccess)
     }
 
@@ -93,6 +99,7 @@ final class CallDirectoryController: ObservableObject {
     ) {
         guard position < parts.count else {
             reloadingPart = nil
+            UIApplication.shared.isIdleTimerDisabled = false
             if let first = failures.first {
                 let others = failures.count - 1
                 let also = others == 0 ? "" : others == 1
